@@ -10,6 +10,7 @@ public:
 
     quadedge();
     edge* getEdge(int i) {return &e[i];}
+    friend edge* makeEdge();
 };
 
 quadedge::quadedge()
@@ -81,33 +82,62 @@ edge* edge::fprev()
 
 /* Endpoint getter/setters */
 
-point* edge::getOrigin()
+vertex* edge::getOrigin()
 {
     return orig;
 }
 
-point* edge::getDest()
+vertex* edge::getDest()
 {
     return twin() -> orig;
 }
 
-point edge::origin()
+// Return origin if it was set, otherwise return default vertex
+vertex edge::origin()
 {
-    return *getOrigin();
+    vertex* res = getOrigin();
+    return res ? *res : vertex();
 }
 
-point edge::destination()
+// Return destination if it was set, otherwise return default vertex
+vertex edge::destination()
 {
-    return *getDest();
+    vertex* res = getDest();
+    return res ? *res : vertex();
 }
 
-void edge::setEndpoints(point* o, point *d)
+void edge::setEndpoints(vertex* o, vertex *d)
 {
     orig = o;
     twin() -> orig = d;
 }
 
-/* Quadedge Construction */
+// Sets endpoints and labels left face of edge as i
+void edge::setEndpoints(vertex* o, vertex *d, int i)
+{
+    orig = o;
+    twin() -> orig = d;
+    invrot() -> orig = new vertex(i);
+}
+
+/* Edge operations */
+
+// Splits edges that share origin and melds edges that do not
+void splice(edge* a, edge* b)
+{
+    edge* dual_a = a -> onext() -> rot();
+    edge* dual_b = b -> onext() -> rot();
+
+    edge* a_next = a -> onext();
+    edge* b_next = b -> onext();
+    edge* dual_a_next = dual_a -> onext();
+    edge* dual_b_next = dual_b -> onext();
+
+    a -> next = b_next;
+    b -> next = a_next;
+    dual_a -> next = dual_b_next;
+    dual_b -> next = dual_a_next;
+}
 
 edge* makeEdge()
 {
@@ -115,6 +145,11 @@ edge* makeEdge()
     return qe -> getEdge(0);
 }
 
-
+void deleteEdge(edge* e)
+{
+    splice(e, e -> oprev());
+    splice(e -> twin(), e -> twin() -> oprev());
+    delete e -> getParent();
+}
 
 #endif
