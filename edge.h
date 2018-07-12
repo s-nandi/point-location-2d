@@ -2,16 +2,15 @@
 #define EDGE_H_DEFINED
 
 class quadedge;
-class point;
+class vertex;
 
 struct edge
 {
 friend quadedge;
-
 private:
     int type = -1;
     edge *next = NULL;
-    point *orig = NULL;
+    vertex *orig = NULL;
     quadedge *par = NULL;
 
 public:
@@ -26,11 +25,14 @@ public:
     edge* fnext();
     edge* fprev();
 
-    point* getOrigin();
-    point* getDest();
-    point origin();
-    point destination();
-    void setEndpoints(point*, point*);
+    vertex* getOrigin();
+    vertex* getDest();
+    vertex origin();
+    vertex destination();
+    void setEndpoints(vertex*, vertex*);
+    void setEndpoints(vertex*, vertex*, int);
+
+    friend void splice(edge*, edge*);
 };
 
 #endif
