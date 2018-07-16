@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 
-#include "vertex.h"
 #include "plane.h"
 
 int main()
@@ -20,23 +19,30 @@ int main()
     std::vector <std::vector<int>> triangles(m);
     for (int i = 0; i < m; i++)
     {
-        int a, b, c;
-        std::cin >> a >> b >> c;
-        triangles[i] = {a, b, c};
+        int sz;
+        std::cin >> sz;
+        for (int j = 0; j < sz; j++)
+        {
+            int ind;
+            std::cin >> ind;
+            triangles[i].push_back(ind);
+        }
     }
 
     plane p;
-    edge* startEdge = p.init_subdivision(points, triangles);
-    debug(std::cout, p);
-
-    /*
-    plane p;
-
-    p.init_polygon({{0, 0}, {1, 0}, {2, 0}, {2, 1}, {2, 2}, {0, 2}}, 5);
-    debug(std::cout, p);
-    */
-    //edge* startingEdge = p.init_triangle({0, 0}, {1, 1}, {0, 1}, 3);
-
+    p.init_subdivision(points, triangles);
+    auto faces = p.traverseFaces(traversalMode::useVertexOnce);
+    std::cout<<"Face Traversal"<<std::endl;
+    for (edge* f: faces)
+    {
+        std::cout<<*f<<'\n';
+    }
+    auto vertices = p.traverseVertices(traversalMode::useVertexOnce);
+    std::cout<<"Vertex Traversal"<<std::endl;
+    for (edge* v: vertices)
+    {
+        std::cout<<v -> origin()<<" | prev: " << v -> destination() << '\n';
+    }
 
     return 0;
 }

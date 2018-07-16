@@ -26,7 +26,7 @@ public:
     friend T doubleOrientedArea(const point&, const point&, const point&);
 
     friend std::istream& operator >> (std::istream&, point&);
-    friend std::ostream& operator << (std::ostream &os, const point &p);
+    friend std::ostream& operator << (std::ostream&, const point&);
 };
 
 /* Point Comparison */
