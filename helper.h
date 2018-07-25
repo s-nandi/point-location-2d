@@ -7,5 +7,4 @@ int nextIndex(int i, int sz)
     return (i + 1 < sz) ? i + 1 : 0;
 }
 
-
 #endif

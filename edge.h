@@ -30,8 +30,7 @@ public:
     vertex* getDest() const;
     vertex origin() const;
     vertex destination() const;
-    void setEndpoints(vertex*, vertex*);
-    void setEndpoints(vertex*, vertex*, vertex*);
+    void setEndpoints(vertex*, vertex*, vertex*, vertex*);
 
     bool sameEndpoints(edge*);
     bool flippedEndpoints(edge*);

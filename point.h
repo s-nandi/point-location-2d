@@ -11,9 +11,6 @@ public:
     point(){};
     point(T a, T b) {x = a, y = b;}
 
-    T X();
-    T Y();
-
     bool operator < (const point &o) const;
     bool operator == (const point &o) const;
     bool operator != (const point&) const;

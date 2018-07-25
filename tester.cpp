@@ -31,18 +31,8 @@ int main()
 
     plane p;
     p.init_subdivision(points, triangles);
-    auto faces = p.traverseFaces(traversalMode::useVertexOnce);
-    std::cout<<"Face Traversal"<<std::endl;
-    for (edge* f: faces)
-    {
-        std::cout<<*f<<'\n';
-    }
-    auto vertices = p.traverseVertices(traversalMode::useVertexOnce);
-    std::cout<<"Vertex Traversal"<<std::endl;
-    for (edge* v: vertices)
-    {
-        std::cout<<v -> origin()<<" | prev: " << v -> destination() << '\n';
-    }
+    debug(std::cout, p);
+    std::cout<<std::endl;
 
     return 0;
 }

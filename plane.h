@@ -17,7 +17,7 @@ struct plane
 private:
     edge *incidentEdge;
     void connectToExterior(edge*);
-    int time, numFaces = 1;
+    int time = 1;
 public:
     plane(){}
 
@@ -74,7 +74,7 @@ edge* plane::init_polygon(std::vector <vertex*> &vertices, int face_number = -1)
     {
         int inext = nextIndex(i, vertices.size());
         edges[i] = makeEdge();
-        edges[i] -> setEndpoints(vertices[i], vertices[inext], face);
+        edges[i] -> setEndpoints(vertices[i], vertices[inext], face, &extremeVertex);
     }
     for (int i = 0; i < vertices.size(); i++)
     {
@@ -82,7 +82,6 @@ edge* plane::init_polygon(std::vector <vertex*> &vertices, int face_number = -1)
         splice(edges[inext], edges[i] -> twin());
     }
     incidentEdge = edges[0];
-    numFaces = 1;
     return incidentEdge;
 }
 
@@ -96,65 +95,36 @@ edge* plane::init_triangle(vertex &a, vertex &b, vertex &c, int face_number = -1
     return init_polygon(vertices, face_number);
 }
 
-struct vertex_pair
+struct compare_by_endpoint_indices
 {
-    std::pair <int, int> indices;
-    edge* e;
-
-    vertex_pair(int a, int b, edge* ed)
+    bool operator () (const edge* a, const edge* b) const
     {
-        indices = {std::min(a, b), std::max(a, b)};
-        e = ed;
-    }
-
-    bool operator < (const vertex_pair &o) const
-    {
-        return indices < o.indices;
+        int v1 = a -> getOrigin() -> label, v2 = a -> getDest() -> label;
+        int v3 = b -> getOrigin() -> label, v4 = b -> getDest() -> label;
+        return std::make_pair(std::min(v1, v2), std::max(v1, v2)) < std::make_pair(std::min(v3, v4), std::max(v3, v4));
     }
 };
 
-void plane::connectToExterior(edge* boundary_edge)
+struct compare_by_endpoints
 {
-    // stores inward facing edges from exterior in ccw or cw order
-    std::vector <edge*> inward;
-
-    edge* startEdge = boundary_edge;
-    edge* currEdge = startEdge;
-    std::cout<<"Start do while"<<std::endl;
-    do
+    bool operator () (const edge* a, const edge* b) const
     {
-        edge* inEdge = currEdge -> rot();
-        inEdge -> setEndpoints(&extremeVertex, inEdge -> getDest());
-        inward.push_back(inEdge);
-
-        currEdge = currEdge -> twin() -> onext();
+        point v1 = a -> getOrigin() -> p, v2 = a -> getDest() -> p;
+        point v3 = b -> getOrigin() -> p, v4 = b -> getDest() -> p;
+        return std::make_pair(std::min(v1, v2), std::max(v1, v2)) < std::make_pair(std::min(v3, v4), std::max(v3, v4));
     }
-    while (currEdge != startEdge);
-
-    std::cout<<"Inward: "<<std::endl;
-    for (edge* e: inward)
-    {
-        std::cout<<*e<<std::endl;
-    }
-    /*
-    for (int i = 0; i < inward.size(); i++)
-    {
-        int inext = (i + 1 < inward.size()) ? i + 1 : 0;
-        inward[i] -> setNext(*inward[inext]);
-    }
-    */
-}
+};
 
 // Assumes that all points are distinct and that the faces are given in ccw  order
 edge* plane::init_subdivision(const std::vector <point> &points, const std::vector <std::vector<int>> &faces)
 {
-    std::vector <vertex_pair> vertex_pairs;
-
-    // Create vertex objects
     std::vector <vertex*> vertices(points.size());
     for (int i = 0; i < points.size(); i++)
-        vertices[i] = new vertex(i);
+    {
+        vertices[i] = new vertex(points[i], i); // change to new vertex(points[i], i) when done
+    }
 
+    std::vector <edge*> edges;
     for (int i = 0; i < faces.size(); i++)
     {
         std::vector <vertex*> face_vertices;
@@ -162,49 +132,36 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
         {
             face_vertices.push_back(vertices[vertex_index]);
         }
-        // Push constructed edges to vertex_pairs so that duplicated edges can be merged later
-        // Edges are ordered based on origin label then destination label
         edge* startingEdge = init_polygon(face_vertices, i + 1);
         std::vector <edge*> face_edges = incidentToFace(startingEdge);
+        // Push constructed edges to edges vector so that duplicated edges can be merged later
         for (edge* e: face_edges)
         {
-            vertex_pairs.push_back({e -> getOrigin() -> label, e -> getDest() -> label, e});
-            std::cout<< "Edge: " << e -> origin() << " to " << e -> destination() << std::endl;;
+            edges.push_back(e);
         }
         incidentEdge = startingEdge;
     }
 
     // After sorting, duplicate edges will be next to each other
-    std::sort(vertex_pairs.begin(), vertex_pairs.end());
-    edge* boundary_edge;
-    for (int i = 0; i < vertex_pairs.size(); )
+    std::sort(edges.begin(), edges.end(), compare_by_endpoints());
+    for (int i = 0; i < edges.size(); )
     {
-        edge *e1 = vertex_pairs[i].e;
-        if (i + 1 >= vertex_pairs.size()) // If no edges after e1, e1 must not have duplicate and thus is on boundary
+        if (i + 1 < edges.size() and edges[i] -> sameEndpoints(edges[i + 1]))
         {
-            boundary_edge = e1;
-            break;
-        }
-
-        edge *e2 = vertex_pairs[i + 1].e;
-        if (e1 -> sameEndpoints(e2))
-        {
-            std::cout<<"Joining " << *e1 <<" and " << *(e2 -> twin()) << '\n';
-            auto e2_twin = e2 -> twin();
-            incidentEdge = mergeDuplicate(e1, e2_twin);
+            incidentEdge = mergeTwins(edges[i], edges[i + 1] -> twin());
             i += 2;
         }
-        else if(e1 -> flippedEndpoints(e2))
+        else if(i + 1 < edges.size() and edges[i] -> flippedEndpoints(edges[i + 1]))
         {
-            std::cout<<"Joining " << *e1 <<" and " << *e2 << '\n';
-            incidentEdge = mergeDuplicate(e1, e2);
+            incidentEdge = mergeTwins(edges[i], edges[i + 1]);
             i += 2;
         }
-        else // If edge doesn't have a duplicate, it must be a boundary edge
-             // Need to merge the origin rings of the edge pointing inwards from the exterior
+        else // If edge e1 doesn't have a twin, it must be a boundary edge
+             // Need to set origin of the edge pointing inwards to the extreme vertex
         {
-            incidentEdge = e1;
-            edge* inward = e1 -> rot();
+            incidentEdge = edges[i];
+            std::cout<<*edges[i]<<" is a boundary edge"<<std::endl;
+            edge* inward = edges[i] -> rot();
             inward -> setEndpoints(&extremeVertex, inward -> getDest());
             i++;
         }
@@ -212,7 +169,6 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
 
     //connectToExterior(boundary_edge);
 
-    numFaces = faces.size();
     return incidentEdge;
 }
 
@@ -220,13 +176,14 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
 
 void traverseEdgeDfs(edge* curr, std::vector <edge*> &res, int timestamp)
 {
+    //std::cout<<"At: "<<*curr<<'\n';;
     bool unused = curr -> getParent() -> use(timestamp);
     if (!unused) return;
     res.push_back(curr);
 
     std::vector <edge*> incident = incidentToOrigin(curr -> twin());
 
-    std::cout<<"Curr: "<<*curr<<'\n';
+    std::cout<<"Curr: "<<*curr<<std::endl;
     for (edge* e: incident)
     {
         std::cout<<"Debug neighbor: "<<*e<<std::endl;
@@ -243,13 +200,16 @@ void traverseVertexDfs(edge* curr, std::vector <edge*> &res, int timestamp)
     std::cout<<"Checking lastUsed of: "<<*(curr -> getOrigin()) <<" which is "<<curr -> getOrigin() -> lastUsed<<" while timestamp is "<<timestamp<<std::endl;
     std::cout<<"Origin: "<<curr -> getOrigin()<<std::endl;
     */
+    //std::cout<<"At: "<<*curr<<std::endl;
     bool unused = curr -> getOrigin() -> use(timestamp);
     if (!unused) return;
     res.push_back(curr);
 
+    std::cout<<"BEfore"<<std::endl;
+    std::cout<<"Curr: "<<*curr<<std::endl;
     std::vector <edge*> incident = incidentToOrigin(curr);
+    std::cout<<"AfteR"<<std::endl;
 
-    std::cout<<"Curr: "<<*curr<<'\n';
     for (edge* e: incident)
     {
         std::cout<<"Debug neighbor: "<<*(e -> twin())<<std::endl;
@@ -277,23 +237,52 @@ std::vector <edge*> plane::traverseVertices(traversalMode mode)
 }
 
 /* Debugging information */
+
 void debug(std::ostream &os, plane &p)
 {
-    edge* startingEdge = p.incidentEdge;
-    os << "Starting edge: " << startingEdge -> origin() << " to " << startingEdge -> destination() << '\n';
-
-    os << "Points touching origin:" << '\n';
-    std::vector <edge*> origin_edges = incidentToOrigin(startingEdge);
-    for (auto e: origin_edges)
+    std::cout<<"Time before facetraversal: "<<p.time<<std::endl;
+    auto faces = p.traverseFaces(traversalMode::useEdgeOnce);
+    std::cout<<"Face Traversal " << faces.size() <<std::endl;
+    for (edge* f: faces)
     {
-        os << e -> origin() << " to " << e -> destination() << '\n';
+        std::cout<<"Face: "<< std::endl;
+        std::cout<<*f<< std::endl;
+        auto around = incidentToFace(f -> rot());
+        std::cout<<"Around: "<< " "<< around.size() << std::endl;
+        for (edge* ar: around)
+        {
+            std::cout<<*ar<< std::endl;
+        }
     }
-
-    os << "Points on face (with left and right face labels):" << '\n';
-    std::vector <edge*> face_edges = incidentToFace(startingEdge);
-    for (auto e: face_edges)
+    std::cout<<"Time before vertextraversal: "<<p.time<<std::endl;
+    auto vertices = p.traverseVertices(traversalMode::useVertexOnce);
+    std::cout<<"Vertex Traversal"<<std::endl;
+    for (edge* v: vertices)
     {
-        os << e -> origin() << " " << e -> invrot() -> origin() << " " << e -> rot() -> origin() << '\n';
+        std::cout<<"Vertex: "<< std::endl;
+        std::cout<<v -> origin()<<" | prev: " << v -> destination() << std::endl;
+        auto around = incidentToFace(v -> rot());
+        std::cout<<"Around: "<<std::endl;
+        for (edge* ar: around)
+        {
+            std::cout<<*ar<<std::endl;
+        }
+    }
+}
+
+void debug_quiet(std::ostream &os, plane &p)
+{
+    auto faces = p.traverseFaces(traversalMode::useEdgeOnce);
+    std::cout<<"Face Traversal"<<std::endl;
+    for (edge* f: faces)
+    {
+        std::cout<<*f<<'\n';
+    }
+    auto vertices = p.traverseVertices(traversalMode::useVertexOnce);
+    std::cout<<"Vertex Traversal"<<std::endl;
+    for (edge* v: vertices)
+    {
+        std::cout<<v -> origin()<<" | prev: " << v -> destination() << '\n';
     }
 }
 

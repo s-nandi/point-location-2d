@@ -9,8 +9,9 @@ const int INF = 20;
 
 class vertex
 {
+private:
+    int lastUsed = -1;
 public:
-    int lastUsed = -1; // Move to private later
 
     point p;
     int label = -1;
@@ -18,20 +19,13 @@ public:
 
     vertex(){}
     vertex(point a) {p = a, hasPoint = true;}
-
-    // -1 labels are ignored (used as default parameter)
-    vertex(int i){label = i, hasLabel = (label != -1);}
+    vertex(int i){label = i, hasLabel = (label != -1);} // -1 labels are ignored (used as default parameter)
     vertex(point a, int i) {p = a, label = i; hasPoint = true, hasLabel = (label != -1);}
-
-    T x() const {return p.x;}
-    T y() const {return p.y;}
 
     friend std::ostream& operator << (std::ostream&, const vertex&);
 
     bool use(int);
-    bool isUsed(int);
-};
-vertex extremeVertex = vertex(0);
+} extremeVertex = vertex(0);
 
 // Returns false if vertex was used during or after given timestamp
 // Otherwise returns true and sets lastUsed to timestamp

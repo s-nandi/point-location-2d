@@ -126,19 +126,14 @@ vertex edge::destination() const
     return res ? *res : vertex();
 }
 
-void edge::setEndpoints(vertex* o, vertex *d)
+// Sets origin to o and destination to d
+// Optional lf and rf parameters can be used to label left face as lf and right face as rf
+void edge::setEndpoints(vertex* o, vertex *d, vertex* lf = NULL, vertex* rf = NULL)
 {
     orig = o;
     twin() -> orig = d;
-}
-
-// Sets endpoints and labels left face of edge as lf, and right face as the extreme vertex
-void edge::setEndpoints(vertex* o, vertex *d, vertex* lf)
-{
-    orig = o;
-    twin() -> orig = d;
-    invrot() -> orig = lf;
-    rot() -> orig = &extremeVertex;
+    if (lf) invrot() -> orig = lf;
+    if (rf) rot() -> orig = &extremeVertex;
 }
 
 // Checks if origin and destination addresses are same
@@ -188,23 +183,15 @@ std::pair <edge*, edge*> deleteEdge(edge* e)
     std::pair <edge*, edge*> res = {e -> oprev(), e -> twin() -> oprev()};
     splice(e, e -> oprev());
     splice(e -> twin(), e -> twin() -> oprev());
-    delete e -> getParent();
+    //delete e -> getParent();
     return res;
 }
 
 // Assumes a and b belong to the same face
 // Returns edge e that connects a's origin and b's origin
-// Optional left_face and right_face parameters can be used to set face labels for e
-edge* splitFace(edge* a, edge* b, vertex* left_face = NULL, vertex* right_face = NULL)
+// Left_face and right_face parameters used to set face labels for e (assumed that the remaining edges have proper face labels)
+edge* splitFace(edge* a, edge* b, vertex* left_face, vertex* right_face)
 {
-    /*
-	e = e ? e : makeEdge();
-	splice(e, a -> fnext());
-	splice(e -> twin(), b);
-	e -> setEndpoints(a -> getDest(), b -> getOrigin());
-	e -> invrot() -> setEndpoints(left_face, right_face);
-	return e;
-	*/
 	edge* e = makeEdge();
 	splice(b, e -> twin());
 	splice(a, e);
@@ -213,136 +200,43 @@ edge* splitFace(edge* a, edge* b, vertex* left_face = NULL, vertex* right_face =
 	return e;
 }
 
-// REMOVE THIS LATER
-std::vector <edge*> incidentToFac(edge* edge_on_face)
-{
-    std::vector <edge*> edges;
-    edge* startingEdge = edge_on_face;
-    edge* currEdge = startingEdge;
-    do
-    {
-        edges.push_back(currEdge);
-        currEdge = currEdge -> fnext();
-    }
-    while (currEdge != startingEdge);
-    return edges;
-}
-
-std::vector <edge*> incidentToOr(edge* edge_from_origin)
-{
-    std::vector <edge*> edges;
-    edge* startingEdge = edge_from_origin;
-    edge* currEdge = startingEdge;
-    do
-    {
-        edges.push_back(currEdge);
-        currEdge = currEdge -> onext();
-    }
-    while (currEdge != startingEdge);
-    return edges;
-}
-
 // Assumes a and b represent twins
 // Glues a and b together and connects their left faces with a dual edge
-// Returns pointer to an edge that still exists
-edge* mergeDuplicate(edge* &a, edge* &b)
+// Returns pointer to an arbitrary edge that still exists
+edge* mergeTwins(edge* a, edge* b)
 {
-    /*
-    edge* prev = a -> oprev();
-    edge* twin_prev = a -> twin() -> oprev();
-    edge* rot_prev = a -> rot() -> oprev();
-    edge* invrot_prev = a -> invrot() -> oprev();
-
-    vertex* a_face_endpoint = a -> invrot() -> getOrigin();
-    vertex* b_face_endpoint = b -> invrot() -> getOrigin();
-
-    deleteEdge(a);
-    splice(prev, b -> twin());
-    splice(twin_prev, b);
-    //splice(invrot_prev, b -> rot());
-    //splice(rot_prev, b -> invrot());
-
-    b -> invrot() -> setEndpoints(b_face_endpoint, a_face_endpoint);
-    */
-
-    std::cout<<"Merging: "<<*a<<std::endl;
-
+    std::cout<<"Merging: "<<*a<<" with "<<*b<<std::endl;
     vertex* a_face = a -> invrot() -> getOrigin();
     vertex* b_face = b -> invrot() -> getOrigin();
-    auto old_a = deleteEdge(a);
-    auto old_b = deleteEdge(b);
 
-    std::cout<<"Old a: "<<std::endl;
-    std::cout<<*(old_a.first)<<" and "<<*(old_a.second)<<std::endl;
-    std::cout<<"Old b: "<<std::endl;
-    std::cout<<*(old_b.first)<<" and "<<*(old_b.second)<<std::endl;
+    std::pair <edge*, edge*> a_prev = deleteEdge(a);
+    std::pair <edge*, edge*> b_prev = deleteEdge(b);
 
-    splice(old_a.first, old_b.second);
-    splice(old_a.second, old_b.first);
+    std::cout<<"A prev: "<<std::endl;
+    std::cout<<*(a_prev.first)<<" and "<<*(a_prev.second)<<std::endl;
+    std::cout<<"B prev: "<<std::endl;
+    std::cout<<*(b_prev.first)<<" and "<< *(b_prev.second)<<std::endl;
 
-    /*
-    std::cout<<"After splice: "<<std::endl;
-    auto deb = incidentToFac(old_a.first);
-    for (auto ed: deb)
+    if (a_prev.first != b_prev.second)
     {
-        std::cout<<"Edge: "<<*ed<<std::endl;
-        auto neigh = incidentToOr(ed);
-        std::cout<<"Neighbor: "<<std::endl;
-        for (auto ed2: neigh)
-        {
-            std::cout<<*ed2<<std::endl;
-        }
+        splice(a_prev.first, b_prev.second);
     }
-    std::cout<<"DONE DEBUG Splice Normal"<<std::endl;
-
-    auto deb2 = incidentToFac(old_a.first -> invrot());
-    for (auto ed: deb2)
+    else
     {
-        std::cout<<"Edge: "<<*ed<<std::endl;
-        auto neigh = incidentToOr(ed);
-        std::cout<<"Neighbor: "<<std::endl;
-        for (auto ed2: neigh)
-        {
-            std::cout<<*ed2<<std::endl;
-        }
+        std::cout<<"Redundant a first b second"<<std::endl;
+    }
+    if (a_prev.second != b_prev.first)
+    {
+        splice(a_prev.second, b_prev.first);
+    }
+    else
+    {
+        std::cout<<"Redundant a second b first"<<std::endl;
     }
 
-    std::cout<<"DONE DEBUG Splice Invrot"<<std::endl;
-    */
+    edge* e = splitFace(b_prev.second, a_prev.second, a_face, b_face);
 
-    edge* e = splitFace(old_b.second, old_a.second, a_face, b_face);
-
-    /*
-    std::cout<<"After Connect: "<<std::endl;
-    auto deb3 = incidentToFac(old_a.first);
-    for (auto ed: deb3)
-    {
-        std::cout<<"Edge: "<<*ed<<std::endl;
-        auto neigh = incidentToOr(ed);
-        std::cout<<"Neighbor: "<<std::endl;
-        for (auto ed2: neigh)
-        {
-            std::cout<<*ed2<<std::endl;
-        }
-    }
-    std::cout<<"DONE DEBUG Connect Normal"<<std::endl;
-
-    auto deb4 = incidentToFac(old_a.first -> invrot());
-    for (auto ed: deb4)
-    {
-        std::cout<<"Edge: "<<*ed<<std::endl;
-        auto neigh = incidentToOr(ed);
-        std::cout<<"Neighbor: "<<std::endl;
-        for (auto ed2: neigh)
-        {
-            std::cout<<*ed2<<std::endl;
-        }
-    }
-
-    std::cout<<"DONE DEBUG Connect Invrot"<<std::endl;
-    */
-
-    return old_a.first;
+    return e;
 }
 
 #endif
