@@ -11,10 +11,11 @@ private:
     static inline int shift_up_mod4(int, int);
     static inline int shift_down_mod4(int, int);
 public:
-    edge e[4];
+    edge* e[4];
 
     quadedge();
-    edge* getEdge(int i) {return &e[i];}
+    edge* getEdge(int i) {return e[i];}
+    void setEdge(int i, edge* &ed) {e[i] = ed;}
     friend edge* makeEdge();
 
     bool use(int);
@@ -22,11 +23,15 @@ public:
 
 quadedge::quadedge()
 {
-    e[0].type = 0, e[0].setNext(e[0]);
-    e[1].type = 1, e[1].setNext(e[3]);
-    e[2].type = 2, e[2].setNext(e[2]);
-    e[3].type = 3, e[3].setNext(e[1]);
-    e[0].par = e[1].par = e[2].par = e[3].par = this;
+    for (int i = 0; i < 4; i++)
+    {
+        e[i] = new edge;
+    }
+    e[0] -> type = 0, e[0] -> setNext(e[0]);
+    e[1] -> type = 1, e[1] -> setNext(e[3]);
+    e[2] -> type = 2, e[2] -> setNext(e[2]);
+    e[3] -> type = 3, e[3] -> setNext(e[1]);
+    e[0] -> par = e[1] -> par = e[2] -> par = e[3] -> par = this;
 }
 
 // Returns false if edge was used during or after given timestamp
@@ -100,6 +105,24 @@ edge* edge::fprev() const
     return invrot() -> oprev() -> rot();
 }
 
+/* Edge assignment */
+
+void edge::setTwin(edge* &e)
+{
+    int ind = quadedge::shift_up_mod4(type, 2);
+    par -> setEdge(ind, e);
+    e -> type = ind;
+    e -> par = par;
+}
+
+void edge::setRot(edge* &e)
+{
+    int ind = quadedge::shift_up_mod4(type, 1);
+    par -> setEdge(ind, e);
+    e -> type = ind;
+    e -> par = par;
+}
+
 /* Endpoint getter/setters/checks */
 
 vertex* edge::getOrigin() const
@@ -127,13 +150,13 @@ vertex edge::destination() const
 }
 
 // Sets origin to o and destination to d
-// Optional lf and rf parameters can be used to label left face as lf and right face as rf
-void edge::setEndpoints(vertex* o, vertex *d, vertex* lf = NULL, vertex* rf = NULL)
+// Lf and rf parameters can be used to label left face as lf and right face as rf
+void edge::setEndpoints(vertex* o, vertex* d = NULL, vertex* lf = NULL, vertex* rf = NULL)
 {
     orig = o;
-    twin() -> orig = d;
+    if (d) twin() -> orig = d;
     if (lf) invrot() -> orig = lf;
-    if (rf) rot() -> orig = &extremeVertex;
+    if (rf) rot() -> orig = rf;
 }
 
 // Checks if origin and destination addresses are same
@@ -183,21 +206,7 @@ std::pair <edge*, edge*> deleteEdge(edge* e)
     std::pair <edge*, edge*> res = {e -> oprev(), e -> twin() -> oprev()};
     splice(e, e -> oprev());
     splice(e -> twin(), e -> twin() -> oprev());
-    //delete e -> getParent();
     return res;
-}
-
-// Assumes a and b belong to the same face
-// Returns edge e that connects a's origin and b's origin
-// Left_face and right_face parameters used to set face labels for e (assumed that the remaining edges have proper face labels)
-edge* splitFace(edge* a, edge* b, vertex* left_face, vertex* right_face)
-{
-	edge* e = makeEdge();
-	splice(b, e -> twin());
-	splice(a, e);
-	e -> setEndpoints(a -> getOrigin(), b -> getOrigin());
-	e -> invrot() -> setEndpoints(left_face, right_face);
-	return e;
 }
 
 // Assumes a and b represent twins
@@ -206,37 +215,41 @@ edge* splitFace(edge* a, edge* b, vertex* left_face, vertex* right_face)
 edge* mergeTwins(edge* a, edge* b)
 {
     std::cout<<"Merging: "<<*a<<" with "<<*b<<std::endl;
-    vertex* a_face = a -> invrot() -> getOrigin();
-    vertex* b_face = b -> invrot() -> getOrigin();
+    std::cout<<"ab: "<<*a<<" and "<<*b<<std::endl;
 
-    std::pair <edge*, edge*> a_prev = deleteEdge(a);
-    std::pair <edge*, edge*> b_prev = deleteEdge(b);
+    vertex* right_face = b -> invrot() -> getOrigin();
 
-    std::cout<<"A prev: "<<std::endl;
-    std::cout<<*(a_prev.first)<<" and "<<*(a_prev.second)<<std::endl;
-    std::cout<<"B prev: "<<std::endl;
-    std::cout<<*(b_prev.first)<<" and "<< *(b_prev.second)<<std::endl;
+    a -> fnext() -> setNext(b);
+    b -> fnext() -> setNext(a);
 
-    if (a_prev.first != b_prev.second)
+    edge* b_twin_onext = b -> twin() -> onext();
+    edge* a_twin_onext = a -> twin() -> onext();
+    a -> twin() -> fnext() -> setNext(b_twin_onext);
+    b -> twin() -> fnext() -> setNext(a_twin_onext);
+
+    edge* b_rot_onext = b -> rot() -> onext();
+    edge* a_rot_onext = a -> rot() -> onext();
+
+    a -> rot() -> oprev() -> setNext(b_rot_onext);
+    b -> rot() -> oprev() -> setNext(a_rot_onext);
+
+    edge* b_invrot = b -> invrot();
+    a -> setTwin(b);
+    a -> setRot(b_invrot);
+
+    //a -> rot() -> setEndpoints(a -> getOrigin(), a -> getDest(), a -> invrot() -> getOrigin(), right_face);
+    if (a -> twin() -> twin() != a)
     {
-        splice(a_prev.first, b_prev.second);
+        std::cout<<"twin twin not a"<<std::endl;
+        throw "failure";
     }
-    else
+    if (a -> rot() != a -> twin() -> invrot())
     {
-        std::cout<<"Redundant a first b second"<<std::endl;
-    }
-    if (a_prev.second != b_prev.first)
-    {
-        splice(a_prev.second, b_prev.first);
-    }
-    else
-    {
-        std::cout<<"Redundant a second b first"<<std::endl;
+        std::cout<<"Rot is not twin invrot"<<std::endl;
+        throw "failure";
     }
 
-    edge* e = splitFace(b_prev.second, a_prev.second, a_face, b_face);
-
-    return e;
+    return a;
 }
 
 #endif

@@ -15,9 +15,6 @@ private:
     quadedge *par = NULL;
 
 public:
-    void setNext(edge &e) {next = &e;}
-    quadedge* getParent() const {return par;}
-
     edge* rot() const;
     edge* invrot() const;
     edge* twin() const;
@@ -25,6 +22,11 @@ public:
     edge* oprev() const;
     edge* fnext() const;
     edge* fprev() const;
+
+    void setRot(edge*&);
+    void setTwin(edge*&);
+    void setNext(edge* &e) {next = e;}
+    quadedge* getParent() const {return par;}
 
     vertex* getOrigin() const;
     vertex* getDest() const;

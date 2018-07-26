@@ -2,22 +2,20 @@
 #include <vector>
 
 #include "plane.h"
+#include "debug.h"
 
 int main()
 {
-    int n;
-    std::cin >> n;
+    int numPoints, numFaces, numEdges;
+    std::cin >> numPoints >> numFaces >> numEdges;
 
-    std::vector <point> points(n);
-    for (int i = 0; i < n; i++)
+    std::vector <point> points(numPoints);
+    for (int i = 0; i < numPoints; i++)
     {
         std::cin >> points[i];
     }
-
-    int m;
-    std::cin >> m;
-    std::vector <std::vector<int>> triangles(m);
-    for (int i = 0; i < m; i++)
+    std::vector <std::vector<int>> triangles(numFaces);
+    for (int i = 0; i < numFaces; i++)
     {
         int sz;
         std::cin >> sz;
@@ -31,8 +29,7 @@ int main()
 
     plane p;
     p.init_subdivision(points, triangles);
-    debug(std::cout, p);
-    std::cout<<std::endl;
+    debug_tour(std::cout, p);
 
     return 0;
 }
