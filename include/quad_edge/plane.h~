@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <sstream>
 #include <cctype>
-#include "quad_edge/quadedge.h"
+#include "quadedge.h"
 
 /*
 * Used as parameter for traversing plane

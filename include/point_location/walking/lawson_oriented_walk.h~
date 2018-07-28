@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <random>
-#include "quad_edge/plane.h"
-#include "point_location/point_location.h"
+#include "../../quad_edge/plane.h"
+#include "../point_location.h"
 
 struct lawson_oriented_walk : pointlocation
 {

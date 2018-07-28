@@ -3,7 +3,7 @@
 
 #include <assert.h>
 #include <iterator>
-#include "quad_edge/vertex.h"
+#include "vertex.h"
 
 /*
 * Used as parameter for iterating through incident edges to an edge

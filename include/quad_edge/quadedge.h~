@@ -1,7 +1,7 @@
 #ifndef QUADEDGE_H_DEFINED
 #define QUADEDGE_H_DEFINED
 
-#include "quad_edge/edge.h"
+#include "edge.h"
 
 class plane;
 
