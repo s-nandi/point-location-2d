@@ -1,29 +1,52 @@
 #ifndef VERTEX_H_DEFINED
 #define VERTEX_H_DEFINED
 
-typedef double T;
+#include "point2D.h"
+#include "point3D.h"
 
-#include "point.h"
+typedef point3D point;
+
+// Thrown if label for vertex is negative
+struct invalidLabelException : std::exception
+{
+    const char * what () const throw ()
+    {
+    	return "Invalid Label for Vertex: Labels Must Be Strictly Positive";
+    }
+};
+
+class plane;
 
 class vertex
 {
+friend plane;
 private:
-    int lastUsed = -1;
-public:
-
+    int label;
     point position;
-    int label = -1;
-    bool hasPoint = false, hasLabel = false;
-
-    vertex(){}
-    vertex(point a) {position = a, hasPoint = true;}
-    vertex(int i){label = i, hasLabel = (label != -1);} // -1 labels are ignored (used as default parameter)
-    vertex(point a, int i) {position = a, label = i; hasPoint = true, hasLabel = (label != -1);}
-
-    friend std::ostream& operator << (std::ostream&, const vertex&);
+    bool hasPosition = false;
+    int lastUsed = -1;
 
     bool use(int);
+public:
+    vertex(){}
+    vertex(int);
+    vertex(point, int);
+
+    friend std::ostream& operator << (std::ostream&, const vertex&);
 } extremeVertex = vertex(0);
+
+vertex::vertex(int i)
+{
+    if (i < 0) throw invalidLabelException();
+    label = i;
+}
+
+vertex::vertex(point p, int i)
+{
+    if (i < 0) throw invalidLabelException();
+    position = p, label = i;
+    hasPosition = true;
+}
 
 // Returns false if vertex was used during or after given timestamp
 // Otherwise returns true and sets lastUsed to timestamp
@@ -40,11 +63,8 @@ bool vertex::use(int timestamp)
 
 std::ostream& operator << (std::ostream &os, const vertex &v)
 {
-    if (v.hasPoint and v.hasLabel) return os << "[" << v.position << " : " << v.label << "]";
-    else if (v.hasPoint) return os << v.position;
-    else if (v.label != -1) return os << v.label;
-    else return os << "DNE";
+    if (v.hasPosition) return os << "[" << v.position << " : " << v.label << "]";
+    else return os << v.label; // -1 labels are ignored (non-zero label must be
 }
 
 #endif
-
