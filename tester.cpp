@@ -1,17 +1,18 @@
 #include <iostream>
 #include <iomanip>
 
-#include "plane.h"
-#include "debug.h"
+#include "include/quad_edge/plane.h"
+#include "include/debug.h"
 
 int main()
 {
     std::cout << std::fixed << std::setprecision(9);
-    plane p;
+    plane pln;
     try
     {
-        p.read_OFF_file(std::cin);
-        p.interactiveTour(std::cin, std::cout);
+        pln.read_OFF_file(std::cin);
+        debug::loud_print(std::cout, pln);
+        debug::check_lawson(std::cin, std::cout, pln);
     }
     catch (std::exception &e)
     {
