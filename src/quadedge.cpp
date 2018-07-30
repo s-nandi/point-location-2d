@@ -1,27 +1,5 @@
-#ifndef QUADEDGE_H_DEFINED
-#define QUADEDGE_H_DEFINED
-
-#include "quad_edge/edge.h"
-
-class plane;
-
-class quadedge
-{
-friend edge;
-friend plane;
-private:
-    edge* e[4];
-    int lastUsed = -1;
-
-    quadedge();
-
-    edge* getEdge(int i) const {return e[i];}
-    void setEdge(int i, edge* &ed) {e[i] = ed;}
-
-    friend edge* makeEdge();
-
-    bool use(int);
-};
+#include "quadedge_structure/quadedge.h"
+#include <assert.h>
 
 quadedge::quadedge()
 {
@@ -118,7 +96,7 @@ void edge::setTwin(edge* &e)
     e -> par = par;
 }
 
-/* Endpoint getter/setters */
+/* Endpoint getter/setter */
 
 vertex* edge::getOrigin() const
 {
@@ -161,7 +139,7 @@ vertex edge::rightface() const
 // Sets origin/destination to o and d respectively
 // Lf and rf parameters can be used to label left face as lf and right face as rf
 // NULL can be passed for any of the parameters to prevent setting specific labels
-void edge::setEndpoints(vertex* o = NULL, vertex* d = NULL, vertex* lf = NULL, vertex* rf = NULL)
+void edge::setEndpoints(vertex* o, vertex* d, vertex* lf, vertex* rf)
 {
     if (o) orig = o;
     if (d) twin() -> orig = d;
@@ -169,7 +147,7 @@ void edge::setEndpoints(vertex* o = NULL, vertex* d = NULL, vertex* lf = NULL, v
     if (rf) rot() -> orig = rf;
 }
 
-/* Edge operations */
+/* Edge Operations */
 
 // Creates non-looping edge whose left and right faces are the same
 // Use makeEdge() -> rot() to create loop that splits plane into two faces
@@ -270,5 +248,3 @@ edge* mergeTwins(edge* a, edge* b)
 
     return a;
 }
-
-#endif

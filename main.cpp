@@ -1,8 +1,8 @@
 #include <iostream>
 #include <iomanip>
 
-#include "quad_edge/plane.h"
-#include "debug.h"
+#include "quadedge_structure/plane.h"
+#include "debug_functions.h"
 
 int main()
 {

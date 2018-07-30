@@ -1,7 +1,7 @@
-#ifndef DEBUG_H_DEFINED
-#define DEBUG_H_DEFINED
+#ifndef DEBUG_FUNCTIONS_H_DEFINED
+#define DEBUG_FUNCTIONS_H_DEFINED
 
-#include "quad_edge/plane.h"
+#include "quadedge_structure/plane.h"
 #include "point_location/walking/lawson_oriented_walk.h"
 
 /* Debugging planar subdivision information */
@@ -62,8 +62,8 @@ struct debug
 
     static void check_lawson(std::istream &is, std::ostream &os, plane &pln)
     {
-        lawson_oriented_walk locator(pln);
-        lawson_oriented_walk rem_locator(pln, false, true);
+        lawson_oriented_walk locator(pln, {rememberingWalk});
+        lawson_oriented_walk rem_locator(pln, {fastRememberingWalk}, 1);
         os << "How many point location queries will you make?:" << std::endl;
         int q;
         is >> q;
@@ -72,16 +72,27 @@ struct debug
             point p;
             is >> p;
 
+            os << "For regular walk" << std::endl;
             auto e = locator.locate(p);
-            auto e_rem = rem_locator.locate(p);
             if (e)
             {
-                if (e -> leftface().getLabel() != e_rem -> leftface().getLabel())
-                {
-                    throw "Different face results";
-                }
                 os << "Point " << p << " is in face: " << std::endl;
                 for (auto it = e -> begin(incidentToFace); it != e -> end(incidentToFace); ++it)
+                {
+                    os << *it << std::endl;
+                }
+            }
+            else
+            {
+                os << "Point " << p << " is out of bounds" << std::endl;
+            }
+
+            os << "For remembering walk" << std::endl;
+            auto e_rem = rem_locator.locate(p);
+            if (e_rem)
+            {
+                os << "Point " << p << " is in face: " << std::endl;
+                for (auto it = e_rem -> begin(incidentToFace); it != e_rem -> end(incidentToFace); ++it)
                 {
                     os << *it << std::endl;
                 }

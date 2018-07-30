@@ -1,61 +1,8 @@
-#ifndef PLANE_H_DEFINED
-#define PLANE_H_DEFINED
-
-#include <vector>
+#include "quadedge_structure/plane.h"
 #include <algorithm>
 #include <assert.h>
 #include <sstream>
 #include <cctype>
-#include "quad_edge/quadedge.h"
-
-/*
-* Used as parameter for traversing plane
-* traverseNodes ensures that every vertex is visited once
-* traverseEdges ensures that every edge is visited once
-*/
-enum traversalMode
-{
-    traverseNodes,
-    traverseEdges
-};
-
-/*
-* Used as parameter to determine which graph is traversed
-* primalGraph results in traversing vertex to vertex edges
-* dualGraph results in traversing face to face edges
-*/
-enum graphType
-{
-    primalGraph,
-    dualGraph
-};
-
-class pointlocation;
-
-class plane
-{
-friend pointlocation;
-friend debug;
-private:
-    edge *incidentEdge;
-    int time = 1;
-
-    static int nextIndex(int, int);
-    static bool sameEndpoints(edge*, edge*);
-    static bool flippedEndpoints(edge*, edge*);
-
-    std::vector <edge*> init_polygon(std::vector <vertex*>&, int);
-    edge* init_subdivision(const std::vector <point>&, const std::vector<std::vector<int>>&);
-
-    static void traverseEdgeDfs(edge*, std::vector <edge*>&, int);
-    static void traverseVertexDfs(edge*, std::vector <edge*>&, int);
-    std::vector <edge*> traverse(graphType, traversalMode);
-public:
-    plane(){}
-
-    void read_OFF_file(std::istream&);
-    void interactiveTour(std::istream&, std::ostream&);
-};
 
 /*
 * Helper function for indexing
@@ -100,6 +47,8 @@ std::vector <edge*> plane::init_polygon(std::vector <vertex*> &vertices, int fac
     }
     return edges;
 }
+
+vertex extremeVertex = vertex(0); // extremeVertex is used as the outside face for any edge on the boundary of the plane
 
 // Assumes that all points are distinct and that the points of each face are given in ccw order
 edge* plane::init_subdivision(const std::vector <point> &points, const std::vector <std::vector<int>> &faces)
@@ -387,5 +336,3 @@ void plane::interactiveTour(std::istream &is, std::ostream &os)
         if (command == 'E') break;
     }
 }
-
-#endif

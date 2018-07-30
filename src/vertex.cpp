@@ -1,10 +1,4 @@
-#ifndef VERTEX_H_DEFINED
-#define VERTEX_H_DEFINED
-
-#include "geo_primitives/point2D.h"
-#include "geo_primitives/point3D.h"
-
-typedef point2D point;
+#include "quadedge_structure/vertex.h"
 
 // Thrown if label for vertex is negative
 struct invalidLabelException : std::exception
@@ -14,29 +8,6 @@ struct invalidLabelException : std::exception
     	return "Invalid Label for Vertex: Labels Must Be Strictly Positive";
     }
 };
-
-class plane;
-
-class vertex
-{
-friend plane;
-private:
-    int label;
-    point position;
-    bool hasPosition = false;
-    int lastUsed = -1;
-
-    bool use(int);
-public:
-    vertex(){}
-    vertex(int);
-    vertex(point, int);
-
-    int getLabel() {return label;}
-    point getPosition() {return position;}
-
-    friend std::ostream& operator << (std::ostream&, const vertex&);
-} extremeVertex = vertex(0);
 
 vertex::vertex(int i)
 {
@@ -69,5 +40,3 @@ std::ostream& operator << (std::ostream &os, const vertex &v)
     if (v.hasPosition) return os << "[" << v.position << " : " << v.label << "]";
     else return os << v.label; // -1 labels are ignored (non-zero label must be
 }
-
-#endif
