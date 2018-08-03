@@ -1,7 +1,8 @@
 #include <iostream>
 #include <iomanip>
 
-#include "quadedge_structure/plane.h"
+#include "planar_structure/plane.h"
+#include "planar_structure/triangulation.h"
 #include "debug_functions.h"
 
 int main()
