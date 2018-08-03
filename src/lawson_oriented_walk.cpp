@@ -1,4 +1,6 @@
+#include "point_location/point_location.h"
 #include "point_location/walking/lawson_oriented_walk.h"
+#include "planar_structure/plane.h"
 #include <random>
 #include <assert.h>
 
@@ -10,9 +12,11 @@
        since it assumes that the current face is not the target face and that the plane is a triangulation
 *      eventually (after fastSteps steps) reverts back to regular (non-fast) behavior to identify the target face
 */
-lawson_oriented_walk::lawson_oriented_walk(plane &pln, const std::vector <lawsonWalkOptions> &options, int fastSteps) : pointlocation(pln)
+lawson_oriented_walk::lawson_oriented_walk(plane &pln, const std::vector <lawsonWalkOptions> &options, unsigned int fastSteps, unsigned int numSample) : numTests(0), numFaces(0), pointlocation(pln)
 {
-    isStochastic = isRemembering = isFast = false;
+    isStochastic = isRemembering = isFast = isRecent = isSample = false;
+    maxFastSteps = fastSteps;
+    sampleSize = numSample;
     for (lawsonWalkOptions option: options)
     {
         switch (option)
@@ -25,10 +29,21 @@ lawson_oriented_walk::lawson_oriented_walk(plane &pln, const std::vector <lawson
                 break;
             case fastRememberingWalk:
                 isFast = isRemembering = true;
-                maxFastSteps = fastSteps;
+                break;
+            case recentStart:
+                isRecent = true;
+                break;
+            case sampleStart:
+                isSample = true;
                 break;
         }
     }
+    // Iff not a fast walk, maxFastSteps should remain to 0
+    assert(isFast ^ (maxFastSteps == 0));
+    // Iff not using the best edge out of a sample to start, sampleSize must zero
+    assert(isSample ^ (sampleSize == 0));
+    // Cannot pick two starting edge modes at the same time
+    assert(!isSample or !isRecent);
 }
 
 /*
@@ -39,15 +54,19 @@ lawson_oriented_walk::lawson_oriented_walk(plane &pln, const std::vector <lawson
 */
 edge* lawson_oriented_walk::locate(point p)
 {
-    edge* currEdge = startingEdge;
+    edge* currEdge;
+    if (isRecent and recentEdge != NULL) currEdge = recentEdge;
+    else if(isSample) currEdge = bestFromSample(p);
+    else currEdge = startingEdge;
+
     if (isFast)
     {
         // A fast remembering walk assumes that the current face is not the target face and that plane is a triangulation
         // Only use this for the first fastSteps steps so that the target face is detected eventually
-        for (int fastSteps = 0; fastSteps < maxFastSteps; fastSteps++)
+        for (unsigned int fastSteps = 0; fastSteps < maxFastSteps; fastSteps++)
         {
-            edge* e1 = &*(++currEdge -> begin(incidentToFace));
-            edge* e2 = &*(++e1 -> begin(incidentToFace));
+            edge* e1 = currEdge -> fnext();
+            edge* e2 = e1 -> fnext();
 
             auto orient = orientation(e1 -> origin().getPosition(), e1 -> destination().getPosition(), p);
             numTests++;
@@ -55,11 +74,11 @@ edge* lawson_oriented_walk::locate(point p)
             // If assumption is valid, then if e1 does not make a right turn, then e2 must make a right turn
             if (orient > 0)
             {
-                candidate = &*(++e1 -> begin(incidentToEdge));
+                candidate = e1 -> twin();
             }
             else
             {
-                candidate = &*(++e2 -> begin(incidentToEdge));
+                candidate = e2 -> twin();
             }
             numFaces++;
             // If e2 is a boundary edge, point p might be outside the plane or the assumption that the current face is not the target face might be incorrect
@@ -76,11 +95,11 @@ edge* lawson_oriented_walk::locate(point p)
     {
         bool rightTurn = false;
         std::vector <edge> face_edges;
-        for (auto it = currEdge -> begin(incidentToFace); it != currEdge -> end(incidentToFace); ++it)
+        for (auto it = currEdge -> begin(incidentOnFace); it != currEdge -> end(incidentOnFace); ++it)
         {
             // In a remembering walk, the common edge between the current and previous faces is skipped
             // If processing the first triangle, cannot skip any of the face edges since there is no previous face yet
-            if (isRemembering and !firstIteration and it == currEdge -> begin(incidentToFace)) continue;
+            if (isRemembering and !firstIteration and it == currEdge -> begin(incidentOnFace)) continue;
             face_edges.push_back(*it);
         }
 
@@ -100,7 +119,7 @@ edge* lawson_oriented_walk::locate(point p)
                 if (e.rightface().getLabel() == 0) return NULL;
                 else
                 {
-                    currEdge = &*(++e.begin(incidentToEdge));
+                    currEdge = e.twin();
                     rightTurn = true;
                     break;
                 }
@@ -112,5 +131,62 @@ edge* lawson_oriented_walk::locate(point p)
         // If no right turns are made from the face edges to point p, then p must be inside the face
         if (!rightTurn) break;
     }
+    if (isRecent)
+        recentEdge = currEdge;
+
     return currEdge;
+}
+
+void lawson_oriented_walk::addEdge(edge* e)
+{
+    if (isSample)
+    {
+        edgeList.push_back(e);
+        validEdges.insert(e);
+    }
+}
+
+void lawson_oriented_walk::removeEdge(edge* e)
+{
+    if (isSample)
+    {
+        validEdges.erase(e);
+    }
+}
+
+edge* lawson_oriented_walk::bestFromSample(point p)
+{
+    assert(edgeList.size() > 0);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution <int> dist(0, edgeList.size() - 1);
+
+    edge* closestEdge = NULL;
+    T distToClosest;
+    for (int i = 0; i < sampleSize; i++)
+    {
+        bool foundEdge = false;
+        edge* curr;
+        while (!foundEdge)
+        {
+            int randomIndex = dist(gen);
+            if (validEdges.count(edgeList[randomIndex]) == 1)
+            {
+                curr = edgeList[randomIndex];
+                foundEdge = true;
+            }
+        }
+
+        point a = curr -> origin().getPosition();
+        point b = curr -> destination().getPosition();
+        point midpt = (a + b) / 2;
+        T distSq = (midpt - p).magnitudeSquared();
+        if (i == 0 or distSq < distToClosest)
+        {
+            closestEdge = curr;
+            distToClosest = distSq;
+        }
+    }
+    return closestEdge;
 }

@@ -10,10 +10,10 @@ class edge::iterator : public std::forward_iterator_tag
 {
 private:
     edge *start, *curr;
-    bool incremented;
     incidenceMode mode;
+    bool incremented, reversed;
 public:
-    iterator(edge* e, incidenceMode im) : mode(im), incremented(false) {start = curr = e;}
+    iterator(edge*, incidenceMode, bool);
     bool operator != (iterator);
     bool operator == (iterator);
     edge& operator * () {return *curr;}
@@ -22,6 +22,8 @@ public:
 
     friend iterator edge::begin(incidenceMode);
     friend iterator edge::end(incidenceMode);
+    friend iterator edge::rbegin(incidenceMode);
+    friend iterator edge::rend(incidenceMode);
 };
 
 #endif

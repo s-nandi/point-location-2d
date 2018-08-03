@@ -109,31 +109,27 @@ vertex* edge::getDest() const
 }
 
 // Return origin if it was set, otherwise return default vertex
-vertex edge::origin() const
+vertex& edge::origin() const
 {
-    vertex* res = getOrigin();
-    return res ? *res : vertex();
+    return *getOrigin();
 }
 
 // Return destination if it was set, otherwise return default vertex
-vertex edge::destination() const
+vertex& edge::destination() const
 {
-    vertex* res = getDest();
-    return res ? *res : vertex();
+    return *getDest();
 }
 
 // Return left face if it was set, otherwise return default vertex
-vertex edge::leftface() const
+vertex& edge::leftface() const
 {
-    vertex* res = invrot() -> getOrigin();
-    return res ? *res : vertex();
+    return *(invrot() -> getOrigin());
 }
 
 // Return right face if it was set, otherwise return default vertex
-vertex edge::rightface() const
+vertex& edge::rightface() const
 {
-    vertex* res = invrot() -> getDest();
-    return res ? *res : vertex();
+    return *(invrot() -> getDest());
 }
 
 // Sets origin/destination to o and d respectively
@@ -145,6 +141,16 @@ void edge::setEndpoints(vertex* o, vertex* d, vertex* lf, vertex* rf)
     if (d) twin() -> orig = d;
     if (lf) invrot() -> orig = lf;
     if (rf) rot() -> orig = rf;
+}
+
+// Given an edge e, relabels left face pointers for all edges on same left face as e to parameter f
+void edge::labelFace(vertex* f)
+{
+    edge* irot = this -> invrot();
+    for (auto it = irot -> begin(incidentToOrigin); it != irot -> end(incidentToOrigin); ++it)
+    {
+        it -> setEndpoints(f);
+    }
 }
 
 /* Edge Operations */
@@ -176,35 +182,33 @@ void splice(edge* a, edge* b)
 }
 
 /*
-* Assumes b is not the next edge on the left face of a and that planarity is preserved
-* Also assumes that face_number is non-negative if passed in
-* Connects destination of a to origin of b and sets endpoints/faces of the created edge
-* Optional face_number parameter used to label the new face created (to the left of the new edge)
+* Assumes a's destination is not b's origin
+* Connects destination of a to origin of b and sets endpoints of the created edge
+* Does not modify left and right faces of newly created edge
+* Can be used to split a face into smaller faces while keeping the same face labels (ex. triangulating a polygon)
 */
-edge* connect(edge* a, edge* b, int face_number = -1)
+edge* connect(edge* a, edge* b)
 {
     assert(a -> getDest() != b -> getOrigin());
 	edge* e = makeEdge();
 	splice(e, a -> fnext());
 	splice(e -> twin(), b);
-    e -> setEndpoints(a -> getDest(), b -> getOrigin(), NULL, a -> invrot() -> getOrigin());
+    e -> setEndpoints(a -> getDest(), b -> getOrigin(), a -> invrot() -> getOrigin(), a -> invrot() -> getOrigin());
+	return e;
+}
 
-    // If face_number is not given, set the left face of the new edge to be the same as its right face
-    // Can be used to split a face into smaller faces while keeping the same face labels (ex. triangulating a polygon)
-	if (face_number == -1)
-    {
-        e -> invrot() -> setEndpoints(a -> invrot() -> getOrigin());
-    }
-    // If face_number is given, set the origin for all dual edges originating from the left face of e to a new face
-    else
-    {
-        vertex* new_face = new vertex(face_number);
-        edge* irot = e -> invrot();
-        for (auto it = irot -> begin(incidentToOrigin); it != irot -> end(incidentToOrigin); ++it)
-        {
-            it -> setEndpoints(new_face);
-        }
-    }
+/*
+* Assumes a's destination is not b's origin and that face_number is strictly positive
+* Connects destination of a to origin of b and sets endpoints/faces of the created edge
+* face_number parameter used to label the new face created (to the left of the new edge)
+*/
+edge* connect_split(edge* a, edge* b, int face_number)
+{
+    assert(face_number > 0);
+    edge* e = connect(a, b);
+    // sets the left face pointer of all edges on the same left face as e to a new face
+    vertex* new_face = new vertex(face_number);
+    e -> labelFace(new_face);
 	return e;
 }
 
@@ -214,7 +218,7 @@ edge* connect(edge* a, edge* b, int face_number = -1)
 void deleteEdge(edge* e)
 {
     vertex* right_face = e -> rot() -> getOrigin();
-    for (auto it = e -> begin(incidentToFace); it != e -> end(incidentToFace); ++it)
+    for (auto it = e -> begin(incidentOnFace); it != e -> end(incidentOnFace); ++it)
     {
         it -> invrot() -> setEndpoints(right_face);
     }
@@ -248,3 +252,28 @@ edge* mergeTwins(edge* a, edge* b)
 
     return a;
 }
+
+// Assumes that e not a boundary edge (ie. does not have the extremeVertex as its right or left face)
+// Rotates e ccw in its enclosing polygon (the union of the edges on its left and right faces excluding itself)
+// Endpoint/face pointers adjusted to ensure that left/right faces of the rotated edge match the left/right faces of the previous edge e
+// Returns pointer to the newly rotated edge e
+edge* rotateInEnclosing(edge* e)
+{
+    vertex* left_face = e -> invrot() -> getOrigin();
+    vertex* right_face = e -> rot() -> getOrigin();
+    // Make sure that e is not a boundary edge
+    assert(left_face -> getLabel() != 0 and right_face -> getLabel() != 0);
+    edge* a = e -> oprev();
+    edge* b = e -> twin() -> oprev();
+    // Disconnect e from the enclosing polygon
+    splice(e, a);
+    splice(e -> twin(), b);
+    // Connect e to the next edges on a's and b's left faces (note that edges in a face are oriented ccw)
+    splice(e, a -> fnext());
+    splice(e -> twin(), b -> fnext());
+    e -> setEndpoints(a -> getDest(), b -> getDest(), left_face, right_face);
+    a -> invrot() -> setEndpoints(left_face);
+    b -> invrot() -> setEndpoints(right_face);
+    return e;
+}
+

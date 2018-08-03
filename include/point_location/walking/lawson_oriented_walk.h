@@ -2,29 +2,43 @@
 #define LAWSON_ORIENTED_WALK_H_DEFINED
 
 #include <vector>
-#include "quadedge_structure/plane.h"
+#include <unordered_set>
 #include "point_location/point_location.h"
 
 enum lawsonWalkOptions
 {
     stochasticWalk,
     rememberingWalk,
-    fastRememberingWalk
+    fastRememberingWalk,
+    recentStart,
+    sampleStart
 };
 
+class point2D;
+typedef point2D point;
 class plane;
 class edge;
 
 class lawson_oriented_walk : public pointlocation
 {
 private:
-    bool isStochastic;
-    bool isRemembering;
-    bool isFast;
-    int maxFastSteps;
+    bool isStochastic, isRemembering, isFast;
+    bool isRecent, isSample;
+    unsigned int maxFastSteps, sampleSize;
+    edge* recentEdge;
+
+    std::vector <edge*> edgeList;
+    std::unordered_set <edge*> validEdges;
 public:
-    lawson_oriented_walk(plane&, const std::vector <lawsonWalkOptions>& = {}, int = 0);
-    edge* locate(point p);
+    int numTests = 0, numFaces = 0;
+
+    lawson_oriented_walk(){}
+    lawson_oriented_walk(plane&, const std::vector <lawsonWalkOptions>& = {}, unsigned int = 0, unsigned int = 0);
+
+    void addEdge(edge*);
+    void removeEdge(edge*);
+    edge* locate(point);
+    edge* bestFromSample(point);
 };
 
 #endif

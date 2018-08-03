@@ -11,10 +11,15 @@ std::ostream& operator << (std::ostream &os, const edge &e)
 
 /* Edge Iterator Functions */
 
+edge::iterator::iterator(edge* e, incidenceMode im, bool rev) : incremented(false), mode(im), reversed(rev)
+{
+    start = curr = e;
+}
+
 // Assumes that o is an iterator with the same start and mode as this
 bool edge::iterator::operator != (iterator o)
 {
-    assert(start == o.start and mode == o.mode);
+    assert(start == o.start and mode == o.mode and reversed == o.reversed);
     return incremented != o.incremented or curr != o.curr;
 }
 
@@ -27,20 +32,29 @@ bool edge::iterator::operator == (iterator o)
 edge::iterator edge::iterator::operator++ ()
 {
     assert(!incremented or curr != start);
-    switch (mode)
+    if (!reversed) // go to next for begin() and end()
     {
-        case incidentToFace:
-            curr = curr -> fnext();
-            break;
-        case incidentToOrigin:
-            curr = curr -> onext();
-            break;
-        case incidentToDestination:
-            curr = curr -> twin() -> onext() -> twin();
-            break;
-        case incidentToEdge:
-            curr = curr -> twin();
-            break;
+        switch (mode)
+        {
+            case incidentOnFace:
+                curr = curr -> fnext();
+                break;
+            case incidentToOrigin:
+                curr = curr -> onext();
+                break;
+        }
+    }
+    else // go to prev for rbegin() and rend()
+    {
+        switch (mode)
+        {
+            case incidentOnFace:
+                curr = curr -> fprev();
+                break;
+            case incidentToOrigin:
+                curr = curr -> oprev();
+                break;
+        }
     }
     incremented = true;
     return *this;
@@ -48,12 +62,24 @@ edge::iterator edge::iterator::operator++ ()
 
 edge::iterator edge::begin(incidenceMode im)
 {
-    return iterator(this, im);
+    return iterator(this, im, false);
 }
 
 edge::iterator edge::end(incidenceMode im)
 {
-    auto it = iterator(this, im);
+    auto it = iterator(this, im, false);
+    it.incremented = true;
+    return it;
+}
+
+edge::iterator edge::rbegin(incidenceMode im)
+{
+    return iterator(this, im, true);
+}
+
+edge::iterator edge::rend(incidenceMode im)
+{
+    auto it = iterator(this, im, true);
     it.incremented = true;
     return it;
 }

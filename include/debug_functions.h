@@ -1,7 +1,7 @@
 #ifndef DEBUG_FUNCTIONS_H_DEFINED
 #define DEBUG_FUNCTIONS_H_DEFINED
 
-#include "quadedge_structure/plane.h"
+#include "planar_structure/plane.h"
 #include "point_location/walking/lawson_oriented_walk.h"
 
 /* Debugging planar subdivision information */
@@ -18,7 +18,7 @@ struct debug
             os <<*f<< std::endl;
             os << "Around: "<< std::endl;
             edge* rot = f -> rot();
-            for (auto it = rot -> begin(incidentToFace); it != rot -> end(incidentToFace); ++it)
+            for (auto it = rot -> begin(incidentOnFace); it != rot -> end(incidentOnFace); ++it)
             {
                 os << *it << std::endl;
             }
@@ -31,7 +31,7 @@ struct debug
             os << v -> origin()<< " | prev: " << v -> destination() << std::endl;
             os << "Around: " << std::endl;
             edge* rot = v -> rot();
-            for (auto it = rot -> begin(incidentToFace); it != rot -> end(incidentToFace); ++it)
+            for (auto it = rot -> begin(incidentOnFace); it != rot -> end(incidentOnFace); ++it)
             {
                 os << *it << std::endl;
             }
@@ -77,7 +77,7 @@ struct debug
             if (e)
             {
                 os << "Point " << p << " is in face: " << std::endl;
-                for (auto it = e -> begin(incidentToFace); it != e -> end(incidentToFace); ++it)
+                for (auto it = e -> begin(incidentOnFace); it != e -> end(incidentOnFace); ++it)
                 {
                     os << *it << std::endl;
                 }
@@ -92,7 +92,7 @@ struct debug
             if (e_rem)
             {
                 os << "Point " << p << " is in face: " << std::endl;
-                for (auto it = e_rem -> begin(incidentToFace); it != e_rem -> end(incidentToFace); ++it)
+                for (auto it = e_rem -> begin(incidentOnFace); it != e_rem -> end(incidentOnFace); ++it)
                 {
                     os << *it << std::endl;
                 }

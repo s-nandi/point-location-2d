@@ -1,7 +1,8 @@
-#include "quadedge_structure/plane.h"
+#include "planar_structure/plane.h"
+#include "parsing.h"
 #include <algorithm>
+#include <stack>
 #include <assert.h>
-#include <sstream>
 #include <cctype>
 
 /*
@@ -27,10 +28,13 @@ bool plane::flippedEndpoints(edge* e1, edge* e2)
     return e1 -> getOrigin() == e2 -> getDest() and e1 -> getDest() == e2 -> getOrigin();
 }
 
-/* Plane construction */
+/* Plane Construction Helpers */
+
+// extremeVertex is used as the outside face for any edge on the boundary of the plane
+vertex plane::extremeVertex = vertex(0);
 
 // Assumes points are given in ccw order
-std::vector <edge*> plane::init_polygon(std::vector <vertex*> &vertices, int face_number)
+edge* plane::make_polygon(std::vector <vertex*> &vertices, int face_number)
 {
     vertex* face = new vertex(face_number);
     std::vector <edge*> edges(vertices.size());
@@ -38,17 +42,34 @@ std::vector <edge*> plane::init_polygon(std::vector <vertex*> &vertices, int fac
     {
         int inext = nextIndex(i, vertices.size());
         edges[i] = makeEdge();
-        edges[i] -> setEndpoints(vertices[i], vertices[inext], face);
+        edges[i] -> setEndpoints(vertices[i], vertices[inext], face, &extremeVertex);
     }
     for (int i = 0; i < vertices.size(); i++)
     {
         int inext = nextIndex(i, vertices.size());
         splice(edges[inext], edges[i] -> twin());
     }
-    return edges;
+    return edges[0];
 }
 
-vertex extremeVertex = vertex(0); // extremeVertex is used as the outside face for any edge on the boundary of the plane
+/* Plane Construction */
+
+edge* plane::init_polygon(const std::vector <point> &points)
+{
+    std::vector <vertex*> vertices(points.size());
+    for (int i = 0; i < vertices.size(); i++)
+    {
+        vertices[i] = new vertex(points[i], i);
+    }
+    incidentEdge = make_polygon(vertices, 1);
+    return incidentEdge;
+}
+
+edge* plane::init_bounding_box(T left, T top, T right, T bottom)
+{
+    std::vector <point> corners = {{left, top}, {left, bottom}, {right, bottom}, {right, top}};
+    return init_polygon(corners);
+}
 
 // Assumes that all points are distinct and that the points of each face are given in ccw order
 edge* plane::init_subdivision(const std::vector <point> &points, const std::vector <std::vector<int>> &faces)
@@ -67,13 +88,13 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
         {
             face_vertices.push_back(vertices[vertex_index]);
         }
-        std::vector <edge*> face_edges = init_polygon(face_vertices, i + 1);
+        edge* face_edge = make_polygon(face_vertices, i + 1);
         // Push constructed edges to edges vector so that duplicated edges can be merged later
-        for (edge* e: face_edges)
+        for (edge &e: *face_edge)
         {
-            edges.push_back(e);
+            edges.push_back(&e);
         }
-        incidentEdge = face_edges[0];
+        incidentEdge = face_edge;
     }
 
     // Comparator for sorting endpoints by their minimum endpoint label (then their maximum endpoint label if needed)
@@ -91,12 +112,12 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
     {
         if (i + 1 < edges.size() and sameEndpoints(edges[i], edges[i + 1]))
         {
-            mergeTwins(edges[i], edges[i + 1] -> twin());
+            incidentEdge = mergeTwins(edges[i], edges[i + 1] -> twin());
             i += 2;
         }
         else if(i + 1 < edges.size() and flippedEndpoints(edges[i], edges[i + 1]))
         {
-            mergeTwins(edges[i], edges[i + 1]);
+            incidentEdge = mergeTwins(edges[i], edges[i + 1]);
             i += 2;
         }
         else // If edge e1 doesn't have a twin, it must be a boundary edge
@@ -114,27 +135,49 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
 
 // Result stores every distinct edge in the plane
 // Distinct edges are edges that do not belong to the same quadedge
-void plane::traverseEdgeDfs(edge* curr, std::vector <edge*> &result, int timestamp)
+void plane::traverseEdgeDfs(edge* firstEdge, std::vector <edge*> &result, int timestamp)
 {
-    bool unused = curr -> getParent() -> use(timestamp);
-    if (!unused) return;
+    std::stack <edge*> edge_stack;
+    edge_stack.push(firstEdge);
+    while (!edge_stack.empty())
+    {
+        edge* curr = edge_stack.top();
+        edge_stack.pop();
 
-    result.push_back(curr);
-    edge* twin = curr -> twin();
-    for (auto it = twin -> begin(incidentToOrigin); it != twin -> end(incidentToOrigin); ++it)
-        traverseEdgeDfs(&*it, result, timestamp);
+        bool unused = curr -> getParent() -> use(timestamp);
+        if (!unused) continue;
+
+        result.push_back(curr);
+        edge* twin = curr -> twin();
+        for (auto it = twin -> begin(incidentToOrigin); it != twin -> end(incidentToOrigin); ++it)
+        {
+            if (it -> getParent() -> lastUsed < timestamp)
+                edge_stack.push(&*it);
+        }
+    }
 }
 
 // Result stores an edge for each vertex in the plane
-// Taking the origin of each edge in result will give the vertices
-void plane::traverseVertexDfs(edge* curr, std::vector <edge*> &result, int timestamp)
+// Taking the origin of each edge in result will give all vertices
+void plane::traverseVertexDfs(edge* firstEdge, std::vector <edge*> &result, int timestamp)
 {
-    bool unused = curr -> getOrigin() -> use(timestamp);
-    if (!unused) return;
+    std::stack <edge*> edge_stack;
+    edge_stack.push(firstEdge);
+    while (!edge_stack.empty())
+    {
+        edge* curr = edge_stack.top();
+        edge_stack.pop();
 
-    result.push_back(curr);
-    for (auto it = curr -> begin(incidentToOrigin); it != curr -> end(incidentToOrigin); ++it)
-        traverseVertexDfs(it -> twin(), result, timestamp);
+        bool unused = curr -> getOrigin() -> use(timestamp);
+        if (!unused) return;
+
+        result.push_back(curr);
+        for (auto it = curr -> begin(incidentToOrigin); it != curr -> end(incidentToOrigin); ++it)
+        {
+            if (it -> twin() -> getOrigin() -> lastUsed < timestamp)
+                edge_stack.push(it -> twin());
+        }
+    }
 }
 
 std::vector <edge*> plane::traverse(graphType gm, traversalMode tm)
@@ -153,92 +196,13 @@ std::vector <edge*> plane::traverse(graphType gm, traversalMode tm)
     return result;
 }
 
-/* File Parsing */
-
-// Thrown if OFF file does not begin with "OFF"
-struct incorrectHeaderException : std::exception
-{
-    const char * what () const throw ()
-    {
-    	return "Incorrect File Header: Unable to Parse OFF File";
-    }
-};
+/* Parsing */
 
 void plane::read_OFF_file(std::istream &is)
 {
-    int numPoints, numFaces, numEdges;
     std::vector <point> points;
     std::vector <std::vector<int>> faces;
-
-    // Stages: 0 (read header), 1 (read vertex/face/edge count), 2 (read vertices), 3 (read faces)
-    int stage = 0;
-    // Keeps track of how many lines were read at the current stage
-    int linesRead = 0;
-    while (stage <= 3)
-    {
-        std::string line;
-        std::getline(is, line);
-        std::istringstream iss(line);
-
-        // Ignore comments or blank lines
-        if (line.length() == 0 or line[0] == '#')
-            continue;
-
-        switch (stage)
-        {
-            case 0:
-            {
-                std::string header;
-                iss >> header;
-                // File must start with OFF
-                if (header != "OFF")
-                {
-                    throw incorrectHeaderException();
-                }
-                stage = 1;
-                break;
-            }
-            case 1:
-            {
-                iss >> numPoints >> numFaces >> numEdges;
-                points.resize(numPoints);
-                faces.resize(numFaces);
-                stage = 2;
-                break;
-            }
-            case 2:
-            {
-                iss >> points[linesRead];
-                linesRead++;
-                // If numPoints points were read, move to next stage
-                if (linesRead == numPoints)
-                {
-                    stage = 3;
-                    linesRead = 0;
-                }
-                break;
-            }
-            case 3:
-            {
-                int n;
-                iss >> n;
-                faces[linesRead].resize(n);
-                for (int i = 0; i < n; i++)
-                {
-                    iss >> faces[linesRead][i];
-                }
-                linesRead++;
-                // If numFaces faces were read, move to next stage
-                if (linesRead == numFaces)
-                {
-                    stage = 4;
-                    linesRead = 0;
-                }
-                break;
-            }
-        }
-    }
-
+    std::tie(points, faces) = parse_OFF_file(is);
     init_subdivision(points, faces);
 }
 
@@ -295,7 +259,7 @@ void plane::interactiveTour(std::istream &is, std::ostream &os)
                 int label;
                 os << "What face label do you want to set for the right face?" << std::endl;;
                 is >> label;
-                curr = connect(e1, e2, label);
+                curr = connect_split(e1, e2, label);
                 e1 = e2 = NULL;
                 break;
             }

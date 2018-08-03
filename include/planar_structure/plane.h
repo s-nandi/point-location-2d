@@ -34,21 +34,25 @@ class plane
 friend pointlocation;
 friend debug;
 private:
-    edge *incidentEdge;
     int time = 1;
 
     static int nextIndex(int, int);
     static bool sameEndpoints(edge*, edge*);
     static bool flippedEndpoints(edge*, edge*);
 
-    std::vector <edge*> init_polygon(std::vector <vertex*>&, int);
-    edge* init_subdivision(const std::vector <point>&, const std::vector<std::vector<int>>&);
-
     static void traverseEdgeDfs(edge*, std::vector <edge*>&, int);
     static void traverseVertexDfs(edge*, std::vector <edge*>&, int);
-    std::vector <edge*> traverse(graphType, traversalMode);
+protected:
+    static vertex extremeVertex;
+    edge *incidentEdge = NULL;
+
+    static edge* make_polygon(std::vector <vertex*>&, int);
+    edge* init_polygon(const std::vector <point>&);
+    edge* init_bounding_box(T, T, T, T);
+    edge* init_subdivision(const std::vector <point>&, const std::vector<std::vector<int>>&);
 public:
     plane(){}
+    std::vector <edge*> traverse(graphType, traversalMode);
 
     void read_OFF_file(std::istream&);
     void interactiveTour(std::istream&, std::ostream&);

@@ -5,28 +5,26 @@
 
 /*
 * Used as parameter for iterating through incident edges to an edge
-* incidentToFace used to iterate through edges with the same left face in ccw order
+* incidentOnFace used to iterate through edges with the same left face in ccw order
 * incidentToOrigin used to iterate through edges with the same origin in ccw order
-* incidentToDestination used to iterate through edges with the same destination in ccw order
-* incidentToEdge used to iterate through edges with the same endpoints in arbitrary order
 * ccw ordering is flipped to cw ordering for edges belonging to the outside face
 */
 enum incidenceMode
 {
-    incidentToFace,
+    incidentOnFace,
     incidentToOrigin,
-    incidentToDestination,
-    incidentToEdge
 };
 
 class quadedge;
 class plane;
+class triangulation;
 class debug;
 
 class edge
 {
 friend quadedge;
 friend plane;
+friend triangulation;
 friend debug;
 private:
     int type = -1;
@@ -44,16 +42,12 @@ private:
     vertex* getOrigin() const;
     vertex* getDest() const;
     void setEndpoints(vertex* = NULL, vertex* = NULL, vertex* = NULL, vertex* = NULL);
-
-    friend void splice(edge*, edge*);
-    friend void deleteEdge(edge*);
-    friend edge* connect(edge*, edge*, int);
-    friend edge* mergeTwins(edge* a, edge* b);
+    void labelFace(vertex*);
 public:
-    vertex origin() const;
-    vertex destination() const;
-    vertex leftface() const;
-    vertex rightface() const;
+    vertex& origin() const;
+    vertex& destination() const;
+    vertex& leftface() const;
+    vertex& rightface() const;
 
     edge* rot() const;
     edge* invrot() const;
@@ -63,9 +57,18 @@ public:
     edge* fnext() const;
     edge* fprev() const;
 
+    friend void splice(edge*, edge*);
+    friend void deleteEdge(edge*);
+    friend edge* connect(edge*, edge*);
+    friend edge* connect_split(edge*, edge*, int);
+    friend edge* mergeTwins(edge*, edge*);
+    friend edge* rotateInEnclosing(edge*);
+
     struct iterator;
-    iterator begin(incidenceMode = incidentToFace);
-    iterator end(incidenceMode = incidentToFace);
+    iterator begin(incidenceMode = incidentOnFace);
+    iterator end(incidenceMode = incidentOnFace);
+    iterator rbegin(incidenceMode = incidentOnFace);
+    iterator rend(incidenceMode = incidentOnFace);
 
     friend std::ostream& operator << (std::ostream&, const edge&);
 };

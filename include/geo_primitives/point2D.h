@@ -20,10 +20,13 @@ public:
     point2D operator + (const point2D&) const;
     point2D operator - (const point2D&) const;
     friend point2D operator * (T, const point2D&);
+    friend point2D operator / (const point2D&, T);
+    T magnitudeSquared();
 
     friend T cross(const point2D&, const point2D&);
     friend T dot(const point2D&, const point2D&);
     friend T orientation(const point2D&, const point2D&, const point2D&);
+    friend T inCircle(const point2D&, const point2D&, const point2D&, const point2D&);
 
     friend std::istream& operator >> (std::istream&, point2D&);
     friend std::ostream& operator << (std::ostream&, const point2D&);
