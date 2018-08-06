@@ -1,6 +1,7 @@
 #include "planar_structure/plane.h"
 #include "parsing.h"
 #include <algorithm>
+#include <tuple>
 #include <stack>
 #include <assert.h>
 #include <cctype>

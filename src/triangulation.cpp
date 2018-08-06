@@ -25,7 +25,7 @@ std::tuple <T, T, T, T> triangulation::calculate_LTRB_bounding_box(std::vector <
             bottom = std::min(bottom, points[i].y);
         }
     }
-    return {left, top, right, bottom};
+    return std::tuple<T, T, T, T>{left, top, right, bottom};
 }
 
 edge* triangulation::init_bounding_box(T left, T top, T right, T bottom)

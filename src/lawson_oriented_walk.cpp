@@ -2,6 +2,7 @@
 #include "point_location/walking/lawson_oriented_walk.h"
 #include "planar_structure/plane.h"
 #include <random>
+#include <algorithm>
 #include <assert.h>
 
 /*

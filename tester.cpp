@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <chrono>
 #include <cmath>
+#include <algorithm>
 #include "uniform_point_rng.h"
 #include "planar_structure/triangulation.h"
 #include "quadedge_structure/quadedge.h"
