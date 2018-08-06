@@ -92,7 +92,7 @@ void print_percent_correct(const std::string &name, int correct, int total)
 
 /* Tests */
 
-void test_random_point_location_in_random_triangulation(int numPoints = 1000, bool delaunay)
+void test_random_point_location_in_random_triangulation(int numPoints, bool delaunay)
 {
     triangulation tr = triangulation();
     int numCorrect = 0;
