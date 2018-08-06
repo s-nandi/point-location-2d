@@ -25,7 +25,6 @@ private:
     bool bounded = false;
     static const int INF = 1231231234; // Used as default value of infinity for bounding box
 
-    std::tuple <T, T, T, T> calculate_LTRB_bounding_box(std::vector <point>&);
     edge* init_bounding_box(T, T, T, T);
 
     void fixDelaunayCondition(point, edge*);

@@ -6,28 +6,6 @@
 #include <assert.h>
 #include <cmath>
 
-/* Helper function for Calculating Bounding Box */
-std::tuple <T, T, T, T> triangulation::calculate_LTRB_bounding_box(std::vector <point> &points)
-{
-    T left, top, right, bottom;
-    for (int i = 0; i < points.size(); i++)
-    {
-        if (i == 0)
-        {
-            left = right = points[i].x;
-            top = bottom = points[i].y;
-        }
-        else
-        {
-            left = std::min(left, points[i].x);
-            right = std::max(right, points[i].x);
-            top = std::max(top, points[i].y);
-            bottom = std::min(bottom, points[i].y);
-        }
-    }
-    return std::tuple<T, T, T, T>{left, top, right, bottom};
-}
-
 edge* triangulation::init_bounding_box(T left, T top, T right, T bottom)
 {
     assert(left <= right and bottom <= top);
@@ -162,7 +140,7 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
         case arbitraryTriangulation:
         {
             int fastWalkLength = findCeilNthRoot(points.size(), 4);
-            locator = lawson_oriented_walk(*this, {fastRememberingWalk, sampleStart}, fastWalkLength, numSample);
+            locator = lawson_oriented_walk(*this, {stochasticWalk, fastRememberingWalk, sampleStart}, fastWalkLength, numSample);
             break;
         }
     }
@@ -171,7 +149,7 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
     if (!bounded)
     {
         int left, top, right, bottom;
-        std::tie(left, top, right, bottom) = calculate_LTRB_bounding_box(points);
+        std::tie(left, top, right, bottom) = plane::calculate_LTRB_bounding_box(points);
         init_bounding_box(left - 1, top + 1, right + 1, bottom - 1);
     }
 
@@ -180,6 +158,10 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
     {
         locator.addEdge(e);
     }
+
+    // Randomly insert the points if finding a delaunay triangulation to achieve average case behavior
+    if (type == delaunayTriangulation)
+        std::random_shuffle(points.begin(), points.end());
 
     for (int i = 0; i < points.size(); i++)
     {

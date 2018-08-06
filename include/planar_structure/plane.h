@@ -40,13 +40,15 @@ private:
     static bool sameEndpoints(edge*, edge*);
     static bool flippedEndpoints(edge*, edge*);
 
-    static void traverseEdgeDfs(edge*, std::vector <edge*>&, int);
-    static void traverseVertexDfs(edge*, std::vector <edge*>&, int);
+    static std::vector <edge*> traverseEdgeDfs(edge*, int);
+    static std::vector <edge*> traverseVertexDfs(edge*, int);
 protected:
     static vertex extremeVertex;
     edge *incidentEdge = NULL;
 
     static edge* make_polygon(std::vector <vertex*>&, int);
+    static std::tuple <T, T, T, T> calculate_LTRB_bounding_box(std::vector <point>&);
+
     edge* init_polygon(const std::vector <point>&);
     edge* init_bounding_box(T, T, T, T);
     edge* init_subdivision(const std::vector <point>&, const std::vector<std::vector<int>>&);

@@ -35,6 +35,7 @@ bool plane::flippedEndpoints(edge* e1, edge* e2)
 vertex plane::extremeVertex = vertex(0);
 
 // Assumes points are given in ccw order
+// Creates a polygon with a left face of Face_number and a right face correspondong to the exterior face
 edge* plane::make_polygon(std::vector <vertex*> &vertices, int face_number)
 {
     vertex* face = new vertex(face_number);
@@ -51,6 +52,30 @@ edge* plane::make_polygon(std::vector <vertex*> &vertices, int face_number)
         splice(edges[inext], edges[i] -> twin());
     }
     return edges[0];
+}
+
+/* Helper function for Calculating Bounding Box */
+std::tuple <T, T, T, T> plane::calculate_LTRB_bounding_box(std::vector <point> &points)
+{
+    T left, top, right, bottom;
+    for (int i = 0; i < points.size(); i++)
+    {
+        if (i == 0)
+        {
+            left = right = points[i].x;
+            top = bottom = points[i].y;
+        }
+        else
+        {
+            left = std::min(left, points[i].x);
+            right = std::max(right, points[i].x);
+            top = std::max(top, points[i].y);
+            bottom = std::min(bottom, points[i].y);
+        }
+    }
+    --left; --bottom;
+    ++right; ++top;
+    return {left, top, right, bottom};
 }
 
 /* Plane Construction */
@@ -136,8 +161,9 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
 
 // Result stores every distinct edge in the plane
 // Distinct edges are edges that do not belong to the same quadedge
-void plane::traverseEdgeDfs(edge* firstEdge, std::vector <edge*> &result, int timestamp)
+std::vector <edge*> plane::traverseEdgeDfs(edge* firstEdge, int timestamp)
 {
+    std::vector <edge*> result;
     std::stack <edge*> edge_stack;
     edge_stack.push(firstEdge);
     while (!edge_stack.empty())
@@ -156,12 +182,14 @@ void plane::traverseEdgeDfs(edge* firstEdge, std::vector <edge*> &result, int ti
                 edge_stack.push(&*it);
         }
     }
+    return result;
 }
 
 // Result stores an edge for each vertex in the plane
 // Taking the origin of each edge in result will give all vertices
-void plane::traverseVertexDfs(edge* firstEdge, std::vector <edge*> &result, int timestamp)
+std::vector <edge*> plane::traverseVertexDfs(edge* firstEdge, int timestamp)
 {
+    std::vector <edge*> result;
     std::stack <edge*> edge_stack;
     edge_stack.push(firstEdge);
     while (!edge_stack.empty())
@@ -170,7 +198,7 @@ void plane::traverseVertexDfs(edge* firstEdge, std::vector <edge*> &result, int 
         edge_stack.pop();
 
         bool unused = curr -> getOrigin() -> use(timestamp);
-        if (!unused) return;
+        if (!unused) continue;
 
         result.push_back(curr);
         for (auto it = curr -> begin(incidentToOrigin); it != curr -> end(incidentToOrigin); ++it)
@@ -179,6 +207,7 @@ void plane::traverseVertexDfs(edge* firstEdge, std::vector <edge*> &result, int 
                 edge_stack.push(it -> twin());
         }
     }
+    return result;
 }
 
 std::vector <edge*> plane::traverse(graphType gm, traversalMode tm)
@@ -189,12 +218,11 @@ std::vector <edge*> plane::traverse(graphType gm, traversalMode tm)
     else if(gm == dualGraph)
         startingEdge = incidentEdge -> rot();
 
-    std::vector <edge*> result;
     if (tm == traverseEdges)
-        traverseEdgeDfs(startingEdge, result, time++);
+        return traverseEdgeDfs(startingEdge, time++);
     else if (tm == traverseNodes)
-        traverseVertexDfs(startingEdge, result, time++);
-    return result;
+        return traverseVertexDfs(startingEdge, time++);
+    else throw "Invalid traversalMode";
 }
 
 /* Parsing */

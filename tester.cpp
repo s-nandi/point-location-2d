@@ -92,7 +92,7 @@ void print_percent_correct(const std::string &name, int correct, int total)
 
 /* Tests */
 
-void test_random_point_location_in_random_triangulation(int numPoints = 1000, bool delaunay = false)
+void test_random_point_location_in_random_triangulation(int numPoints = 1000, bool delaunay)
 {
     triangulation tr = triangulation();
     int numCorrect = 0;
@@ -251,10 +251,10 @@ int main()
     print_time("test_rng_distribution");
     */
 
-    test_random_point_location_in_random_triangulation(100000);
+    test_random_point_location_in_random_triangulation(10000, false);
     print_time("test_random_point_location_in_random_arbitrary_triangulation");
 
-    test_random_point_location_in_random_triangulation(100000, true);
+    test_random_point_location_in_random_triangulation(10000, true);
     print_time("test_random_point_location_in_random_delaunay_triangulation");
 
     test_delaunay_condition_for_random_triangulation(10000);
