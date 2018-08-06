@@ -75,7 +75,7 @@ std::tuple <T, T, T, T> plane::calculate_LTRB_bounding_box(std::vector <point> &
     }
     --left; --bottom;
     ++right; ++top;
-    return {left, top, right, bottom};
+    return std::tuple<T, T, T, T>{left, top, right, bottom};
 }
 
 /* Plane Construction */

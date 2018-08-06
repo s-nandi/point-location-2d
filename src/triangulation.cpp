@@ -5,6 +5,7 @@
 #include "parsing.h"
 #include <assert.h>
 #include <cmath>
+#include <algorithm>
 
 edge* triangulation::init_bounding_box(T left, T top, T right, T bottom)
 {
