@@ -1,9 +1,18 @@
-#include "point_location/point_location.h"
 #include "point_location/walking/lawson_oriented_walk.h"
 #include "planar_structure/plane.h"
 #include <random>
 #include <algorithm>
 #include <assert.h>
+
+void lawson_oriented_walk::init(plane &pl)
+{
+    pointlocation::init(pl);
+    std::vector <edge*> edges = pl.traverse(primalGraph, traverseEdges);
+    for (edge* e: edges)
+    {
+        addEdge(e);
+    }
+}
 
 /*
 * options can be passed in to modify lawsons original oriented walk algorithm in the following ways:
@@ -13,8 +22,9 @@
        since it assumes that the current face is not the target face and that the plane is a triangulation
 *      eventually (after fastSteps steps) reverts back to regular (non-fast) behavior to identify the target face
 */
-lawson_oriented_walk::lawson_oriented_walk(plane &pln, const std::vector <lawsonWalkOptions> &options, unsigned int fastSteps, unsigned int numSample) : numTests(0), numFaces(0), pointlocation(pln)
+void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &options, unsigned int fastSteps, unsigned int numSample)
 {
+    numTests = numFaces = 0;
     isStochastic = isRemembering = isFast = isRecent = isSample = false;
     maxFastSteps = fastSteps;
     sampleSize = numSample;

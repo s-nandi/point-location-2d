@@ -14,6 +14,7 @@ public:
     point2D(T a, T b) {x = a, y = b;}
 
     bool operator < (const point2D&) const;
+    bool operator > (const point2D&) const;
     bool operator == (const point2D&) const;
     bool operator != (const point2D&) const;
 

@@ -8,6 +8,11 @@ bool point2D::operator < (const point2D &o) const
     else return y < o.y;
 }
 
+bool point2D::operator > (const point2D &o) const
+{
+    return o < *this;
+}
+
 bool point2D::operator == (const point2D &o) const
 {
     return x == o.x and y == o.y;

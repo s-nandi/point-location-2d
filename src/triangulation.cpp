@@ -135,16 +135,17 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
     {
         case delaunayTriangulation:
         {
-            locator = lawson_oriented_walk(*this, {rememberingWalk, sampleStart}, 0, numSample);
+            locator.setParameters({rememberingWalk, sampleStart}, 0, numSample);
             break;
         }
         case arbitraryTriangulation:
         {
             int fastWalkLength = findCeilNthRoot(points.size(), 4);
-            locator = lawson_oriented_walk(*this, {stochasticWalk, fastRememberingWalk, sampleStart}, fastWalkLength, numSample);
+            locator.setParameters({stochasticWalk, fastRememberingWalk, sampleStart}, fastWalkLength, numSample);
             break;
         }
     }
+    locator.init(*this);
 
     // If the plane is not bounded already, first create an initialized padded bounding box
     if (!bounded)

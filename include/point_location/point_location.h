@@ -12,9 +12,7 @@ protected:
     plane* pl;
     edge* startingEdge;
 public:
-    pointlocation(){}
-    pointlocation(plane&);
-
+    virtual void init(plane&);
     virtual edge* locate(point) = 0;
 };
 

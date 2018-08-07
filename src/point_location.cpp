@@ -1,7 +1,7 @@
 #include "point_location/point_location.h"
 #include "planar_structure/plane.h"
 
-pointlocation::pointlocation(plane &pln) : pl(&pln)
+void pointlocation::init(plane &pln)
 {
     startingEdge = pln.incidentEdge;
 }

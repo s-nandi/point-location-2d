@@ -32,8 +32,8 @@ private:
 public:
     int numTests = 0, numFaces = 0;
 
-    lawson_oriented_walk(){}
-    lawson_oriented_walk(plane&, const std::vector <lawsonWalkOptions>& = {}, unsigned int = 0, unsigned int = 0);
+    void init(plane&);
+    void setParameters(const std::vector <lawsonWalkOptions>& = {}, unsigned int = 0, unsigned int = 0);
 
     void addEdge(edge*);
     void removeEdge(edge*);

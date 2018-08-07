@@ -5,8 +5,8 @@
 #include <algorithm>
 #include "uniform_point_rng.h"
 #include "planar_structure/triangulation.h"
-#include "quadedge_structure/quadedge.h"
 #include "point_location/walking/lawson_oriented_walk.h"
+#include "point_location/non_walking/slab_decomposition.h"
 
 /* Helper Functions for point inclusion in face and delaunay condition checking */
 bool in_padded_bounding_box(point p, int left, int top, int right, int bottom)
@@ -92,7 +92,7 @@ void print_percent_correct(const std::string &name, int correct, int total)
 
 /* Tests */
 
-void test_random_point_location_in_random_triangulation(int numPoints, bool delaunay)
+void test_random_point_location_in_random_triangulation(pointlocation &locator, int numPoints, bool delaunay)
 {
     triangulation tr = triangulation();
     int numCorrect = 0;
@@ -113,6 +113,7 @@ void test_random_point_location_in_random_triangulation(int numPoints, bool dela
         endTimer();
         print_time("Generating delaunay random triangulation");
     }
+    locator.init(tr);
 
     std::vector <int> faces;
     for (edge* e: tr.traverse(dualGraph, traverseNodes))
@@ -128,11 +129,6 @@ void test_random_point_location_in_random_triangulation(int numPoints, bool dela
     uniform_point_rng rng(padding_coeff * left, padding_coeff * top, padding_coeff * right, padding_coeff * bottom);
     std::vector <point> locating = rng.getRandom(numPoints);
 
-    lawson_oriented_walk locator(tr, {stochasticWalk, sampleStart, fastRememberingWalk}, std::pow(numPoints, 1.0/4.0), std::pow(numPoints, 1.0/3.0));
-    for (edge* e: tr.traverse(primalGraph, traverseEdges))
-    {
-        locator.addEdge(e);
-    }
     startTimer();
     for (point p: locating)
     {
@@ -251,11 +247,31 @@ int main()
     print_time("test_rng_distribution");
     */
 
-    test_random_point_location_in_random_triangulation(10000, false);
-    print_time("test_random_point_location_in_random_arbitrary_triangulation");
+    /* Point Location Testing */
 
-    test_random_point_location_in_random_triangulation(10000, true);
-    print_time("test_random_point_location_in_random_delaunay_triangulation");
+    int numPoints = 10000;
+
+    /* Slab decomposition */
+    slab_decomposition slab_locator;
+
+    test_random_point_location_in_random_triangulation(slab_locator, 100, false);
+    print_time("test_random_point_location_in_random_arbitrary_triangulation slab");
+
+    test_random_point_location_in_random_triangulation(slab_locator, 100, true);
+    print_time("test_random_point_location_in_random_delaunay_triangulation slab");
+
+    /* Oriented Walk */
+
+    lawson_oriented_walk walk_locator;
+    walk_locator.setParameters({stochasticWalk, sampleStart, fastRememberingWalk}, std::pow(numPoints, 1.0/4.0), std::pow(numPoints, 1.0/3.0));
+
+    test_random_point_location_in_random_triangulation(walk_locator, numPoints, false);
+    print_time("test_random_point_location_in_random_arbitrary_triangulation walking");
+
+    test_random_point_location_in_random_triangulation(walk_locator, numPoints, true);
+    print_time("test_random_point_location_in_random_delaunay_triangulation walking");
+
+    /* Delaunay Speed Testing */
 
     test_delaunay_condition_for_random_triangulation(10000);
     print_time("test_delaunay_condition_for_random_triangulation");
