@@ -116,8 +116,7 @@ int slab_decomposition::findSlabIndex(point p)
             l = m + 1;
         }
     }
-    assert(false);
-    throw "Binary search did not terminate";
+    return -1;
 }
 
 edge* slab_decomposition::findInSlab(int index, point p)
@@ -151,8 +150,7 @@ edge* slab_decomposition::findInSlab(int index, point p)
             l = m + 1;
         }
     }
-    assert(false);
-    throw "Binary search did not terminate";
+    return NULL;
 }
 
 edge* slab_decomposition::locate(point p)
