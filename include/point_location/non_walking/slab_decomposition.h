@@ -31,7 +31,6 @@ struct slab_decomposition::event
 
     point position() const;
     bool operator < (const event&) const;
-    bool compareByY (const event&) const;
 };
 
 #endif

@@ -3,15 +3,14 @@
 #include <random>
 #include <algorithm>
 #include <assert.h>
+#include <ctime>
 
 void lawson_oriented_walk::init(plane &pl)
 {
     pointlocation::init(pl);
-    std::vector <edge*> edges = pl.traverse(primalGraph, traverseEdges);
-    for (edge* e: edges)
-    {
+    numTests = numFaces = 0;
+    for (edge* e: pl.traverse(primalGraph, traverseEdges))
         addEdge(e);
-    }
 }
 
 /*
@@ -22,12 +21,9 @@ void lawson_oriented_walk::init(plane &pl)
        since it assumes that the current face is not the target face and that the plane is a triangulation
 *      eventually (after fastSteps steps) reverts back to regular (non-fast) behavior to identify the target face
 */
-void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &options, unsigned int fastSteps, unsigned int numSample)
+void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &options)
 {
-    numTests = numFaces = 0;
     isStochastic = isRemembering = isFast = isRecent = isSample = false;
-    maxFastSteps = fastSteps;
-    sampleSize = numSample;
     for (lawsonWalkOptions option: options)
     {
         switch (option)
@@ -49,12 +45,16 @@ void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &
                 break;
         }
     }
-    // Iff not a fast walk, maxFastSteps should remain to 0
-    assert(isFast ^ (maxFastSteps == 0));
-    // Iff not using the best edge out of a sample to start, sampleSize must zero
-    assert(isSample ^ (sampleSize == 0));
-    // Cannot pick two starting edge modes at the same time
-    assert(!isSample or !isRecent);
+}
+
+void lawson_oriented_walk::setFastSteps(unsigned int fastSteps)
+{
+    maxFastSteps = fastSteps;
+}
+
+void lawson_oriented_walk::setSampleSize(unsigned int numSample)
+{
+    sampleSize = numSample;
 }
 
 /*
@@ -65,6 +65,15 @@ void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &
 */
 edge* lawson_oriented_walk::locate(point p)
 {
+    // First check if parameters are valid
+
+    // Iff not a fast walk, maxFastSteps should remain to 0
+    assert(isFast ^ (maxFastSteps == 0));
+    // Iff not using the best edge out of a sample to start, sampleSize must zero
+    assert(isSample ^ (sampleSize == 0));
+    // Cannot pick two starting edge modes at the same time
+    assert(!isSample or !isRecent);
+
     edge* currEdge;
     if (isRecent and recentEdge != NULL) currEdge = recentEdge;
     else if(isSample) currEdge = bestFromSample(p);
@@ -169,8 +178,7 @@ edge* lawson_oriented_walk::bestFromSample(point p)
 {
     assert(edgeList.size() > 0);
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    std::mt19937 gen{static_cast<long unsigned int>(time(0))};
     std::uniform_int_distribution <int> dist(0, edgeList.size() - 1);
 
     edge* closestEdge = NULL;

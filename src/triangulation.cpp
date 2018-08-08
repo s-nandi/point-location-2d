@@ -11,7 +11,6 @@ edge* triangulation::init_bounding_box(T left, T top, T right, T bottom)
 {
     assert(left <= right and bottom <= top);
     edge* e = plane::init_bounding_box(left, top, right, bottom);
-    bounded = true;
     // Create a diagonal edge to triangulate the bounding box and split the face
     return connect_split(e -> fnext(), e, 1);
 }
@@ -126,35 +125,37 @@ int findCeilNthRoot(int val, int n)
     return -1;
 }
 
-void triangulation::init_triangulation(std::vector <point> &points, triangulationType type)
+void triangulation::init_triangulation(std::vector <point> &points, triangulationType type, const std::tuple <T, T, T, T> &LTRB)
 {
     lawson_oriented_walk locator;
-    int numSample = findCeilNthRoot(points.size(), 3); // Optimal sample size is around the cube root of the number of points
+
     // Stochastic walk is unnecessary for delaunay triangulations, but needed to prevent loops in non-delaunay triangulations
     switch (type)
     {
         case delaunayTriangulation:
         {
-            locator.setParameters({rememberingWalk, sampleStart}, 0, numSample);
+            locator.setParameters({fastRememberingWalk, sampleStart});
             break;
         }
         case arbitraryTriangulation:
         {
-            int fastWalkLength = findCeilNthRoot(points.size(), 4);
-            locator.setParameters({stochasticWalk, fastRememberingWalk, sampleStart}, fastWalkLength, numSample);
+            locator.setParameters({stochasticWalk, fastRememberingWalk, sampleStart});
             break;
         }
     }
-    locator.init(*this);
+    locator.setFastSteps(findCeilNthRoot(points.size(), 4));
+    locator.setSampleSize(findCeilNthRoot(points.size(), 3));
 
-    // If the plane is not bounded already, first create an initialized padded bounding box
-    if (!bounded)
-    {
-        int left, top, right, bottom;
+    // Create bounding box, calculate dimensions if not given
+    int left, top, right, bottom;
+    if (LTRB == std::tuple<T, T, T, T>{0, 0, 0, 0})
         std::tie(left, top, right, bottom) = plane::calculate_LTRB_bounding_box(points);
-        init_bounding_box(left - 1, top + 1, right + 1, bottom - 1);
-    }
+    else
+        std::tie(left, top, right, bottom) = LTRB;
+    // Pad out the bounding box so that we can generate random numbers inclusively in ranges [left, right] and [bottom, top] without letting points fall on the boundary
+    init_bounding_box(left - 1, top + 1, right + 1, bottom - 1);
 
+    locator.init(*this);
     // Add bounding box edges to the locator
     for (edge* e: this -> traverse(primalGraph, traverseEdges))
     {
@@ -185,13 +186,10 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
 
 void triangulation::generateRandomTriangulation(int numPoints, triangulationType type, T left, T top, T right, T bottom)
 {
-    // Pad out the bounding box so that we can generate random numbers inclusively in ranges [left, right] and [bottom, top] without letting points fall on the boundary
-    init_bounding_box(left - 1, top + 1, right + 1, bottom - 1);
-
     uniform_point_rng pointRng(left, top, right, bottom);
     std::vector <point> points = pointRng.getRandom(numPoints);
 
-    init_triangulation(points, type);
+    init_triangulation(points, type, std::tuple<T, T, T, T>{left, top, right, bottom});
 }
 
 void triangulation::read_PT_file(std::istream &is, triangulationType type)

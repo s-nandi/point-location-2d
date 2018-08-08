@@ -22,7 +22,6 @@ class lawson_oriented_walk;
 class triangulation : public plane
 {
 private:
-    bool bounded = false;
     static const int INF = 1231231234; // Used as default value of infinity for bounding box
 
     edge* init_bounding_box(T, T, T, T);
@@ -30,7 +29,7 @@ private:
     void fixDelaunayCondition(point, edge*);
     void addPoint(point, int, lawson_oriented_walk&, triangulationType);
 
-    void init_triangulation(std::vector <point>&, triangulationType = delaunayTriangulation);
+    void init_triangulation(std::vector <point>&, triangulationType = delaunayTriangulation, const std::tuple<T, T, T, T>& = std::tuple<T, T, T, T>{0, 0, 0, 0});
 public:
     int numDelaunayFlips = 0;
 

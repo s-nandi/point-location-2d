@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <iostream>
 
+/* Event Functions */
+
 // Returns position of event, assuming that edge is directed from left to right
 point slab_decomposition::event::position() const
 {
@@ -18,26 +20,17 @@ point slab_decomposition::event::position() const
 // Used to sort segments within a slab
 bool slab_decomposition::event::operator < (const event &o) const
 {
-    return position() < o.position();
+    if (position() != o.position()) position() < o.position();
+    else return isLeft > o.isLeft;
 }
 
-// Comparator for two edge pointers that compares the y coordinate of their left endpoints
-// Used to sort segments within a slab
-bool slab_decomposition::event::compareByY(const event &o) const
-{
-    point pos = position();
-    point o_pos = o.position();
-
-    if (pos.y != o_pos.y) return pos.y < o_pos.y;
-    else
-    {
-        assert(false);
-        throw "Intersecting edges in planar graph"; // If two events in the same slab have the same y-coordinate, there is an intersection
-    }
-}
+/* Slab Decomposition Implementation */
 
 void slab_decomposition::init(plane &p)
 {
+    slabs.clear();
+    slab_positions.clear();
+
     // Each event is a pair corresponding to the position of a vertex and the edge it belongs to, from left to right
     // Events will be used to line sweep from left to right and create slabs for each distinct pair of consecutive x-coordinates
     std::vector <event> events;
@@ -63,13 +56,20 @@ void slab_decomposition::init(plane &p)
     std::sort(x_coordinates.begin(), x_coordinates.end());
     x_coordinates.erase(std::unique(x_coordinates.begin(), x_coordinates.end()), x_coordinates.end());
 
-    std::cout << "X coordinates: " << std::endl;
-    for (int x: x_coordinates)
-        std::cout << x << " ";
-    std::cout << std::endl;
+    // Comparator for two edge pointers that compares the y coordinate of their left endpoints
+    // Used to sort segments within a slab
+    auto compareByY = [](const event &a, const event &b)
+    {
+        point a_pos = a.position();
+        point b_pos = b.position();
+
+        if (a_pos.y != b_pos.y) return a_pos.y < b_pos.y;
+        else if (a_pos.x != b_pos.x) return a_pos.x < b_pos.x;
+        else return a.segment < b.segment;
+    };
 
     int event_it = 0;
-    std::set <event> current_slab;
+    std::set <event, decltype(compareByY)> current_slab(compareByY);
     for (int i = 0; i < x_coordinates.size(); i++)
     {
         while (event_it < events.size() and events[event_it].position().x == x_coordinates[i])
@@ -90,7 +90,21 @@ void slab_decomposition::init(plane &p)
         slabs.push_back(slab_edges);
         slab_positions.push_back(x_coordinates[i]);
     }
+    /*
     std::cout<<"Finished building"<<std::endl;
+    std::cout << "# slabs: "<<slabs.size()<<std::endl;
+    std::cout << "# locations: " << slab_positions.size() << std::endl;
+
+    for (int i = 0; i < slabs.size(); i++)
+    {
+        std::cout << "Position: " << slab_positions[i] << " Size: " << slabs[i].size()<<std::endl;
+        for (edge* e: slabs[i])
+        {
+            std::cout<<*e<<std::endl;
+        }
+        std::cout<<std::endl;
+    }
+    */
 }
 
 // Finds the index of the slab that p belongs to
@@ -116,7 +130,7 @@ int slab_decomposition::findSlabIndex(point p)
             l = m + 1;
         }
     }
-    return -1;
+    return l;
 }
 
 edge* slab_decomposition::findInSlab(int index, point p)
@@ -129,8 +143,13 @@ edge* slab_decomposition::findInSlab(int index, point p)
         return e -> origin().getPosition().y;
     };
 
+    assert(p.x >= slab_positions[index]);
+    assert(index + 1 >= slab_positions.size() or p.x <= slab_positions[index + 1]);
+
     if (p.y < getY(slabs[index][0]) or p.y > getY(slabs[index].back()))
+    {
         return NULL;
+    }
 
     int l = 0, r = slabs[index].size() - 1;
     while (l < r)
@@ -150,7 +169,7 @@ edge* slab_decomposition::findInSlab(int index, point p)
             l = m + 1;
         }
     }
-    return NULL;
+    return slabs[index][l];
 }
 
 edge* slab_decomposition::locate(point p)
@@ -159,6 +178,9 @@ edge* slab_decomposition::locate(point p)
     if (ind == -1) return NULL;
 
     edge* bounding_edge = findInSlab(ind, p);
+
+    if (bounding_edge == NULL)
+        return NULL;
 
     point origin = bounding_edge -> origin().getPosition();
     point destination = bounding_edge -> destination().getPosition();

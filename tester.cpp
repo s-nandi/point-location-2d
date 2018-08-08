@@ -222,10 +222,22 @@ void test_rng_distribution()
             maxx = std::max(maxx, xtenths[i]);
         }
     }
+
+    bool allSame = true;
+    uniform_point_rng rng2(left, top, right, bottom);
+    for (int i = 0; i < numPoints; i++)
+    {
+        point p = rng.getRandom();
+        point p2 = rng2.getRandom();
+        if (p != p2)
+            allSame = false;
+    }
+
     double threshold = 1.01;
     double x_rat = (double) maxx / minx;
     double y_rat = (double) maxy / miny;
-    int passed = 2;
+    int passed, total;
+    passed = total = 3;
     if (x_rat > threshold)
     {
         std::cout << "Some X values show up too often compared to others" << std::endl;
@@ -236,34 +248,42 @@ void test_rng_distribution()
         std::cout << "Some Y values show up too often compared to others" << std::endl;
         --passed;
     }
-    print_percent_correct("test_rng_distribution", passed, 2);
+    if (allSame)
+    {
+        std::cout << "Different generators produce same sequence of numbers" << std::endl;
+        --passed;
+    }
+    print_percent_correct("test_rng_distribution", passed, total);
     endTimer();
 }
 
 int main()
 {
-    /*
+    /* Rng Checking */
+
     test_rng_distribution();
     print_time("test_rng_distribution");
-    */
 
     /* Point Location Testing */
 
     int numPoints = 10000;
 
     /* Slab decomposition */
+
     slab_decomposition slab_locator;
 
-    test_random_point_location_in_random_triangulation(slab_locator, 100, false);
+    test_random_point_location_in_random_triangulation(slab_locator, numPoints, false);
     print_time("test_random_point_location_in_random_arbitrary_triangulation slab");
 
-    test_random_point_location_in_random_triangulation(slab_locator, 100, true);
+    test_random_point_location_in_random_triangulation(slab_locator, numPoints, true);
     print_time("test_random_point_location_in_random_delaunay_triangulation slab");
 
     /* Oriented Walk */
 
     lawson_oriented_walk walk_locator;
-    walk_locator.setParameters({stochasticWalk, sampleStart, fastRememberingWalk}, std::pow(numPoints, 1.0/4.0), std::pow(numPoints, 1.0/3.0));
+    walk_locator.setParameters({stochasticWalk, sampleStart, fastRememberingWalk});
+    walk_locator.setFastSteps(std::pow(numPoints, 1.0/4.0));
+    walk_locator.setSampleSize(std::pow(numPoints, 1.0/3.0));
 
     test_random_point_location_in_random_triangulation(walk_locator, numPoints, false);
     print_time("test_random_point_location_in_random_arbitrary_triangulation walking");
@@ -273,6 +293,7 @@ int main()
 
     /* Delaunay Speed Testing */
 
+    /*
     test_delaunay_condition_for_random_triangulation(10000);
     print_time("test_delaunay_condition_for_random_triangulation");
 
@@ -284,6 +305,7 @@ int main()
 
     test_delaunay_condition_for_random_triangulation(100000);
     print_time("test_delaunay_condition_for_random_triangulation");
+    */
 
     return 0;
 }

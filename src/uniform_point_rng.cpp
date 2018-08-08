@@ -1,12 +1,12 @@
 #include "uniform_point_rng.h"
 #include "quadedge_structure/vertex.h"
 #include <assert.h>
+#include <ctime>
 
 uniform_point_rng::uniform_point_rng(T left, T top, T right, T bottom)
 {
     assert(left <= right and bottom <= top);
-    std::random_device rd;
-    gen = std::mt19937(rd());
+    gen = std::mt19937{static_cast<long unsigned int>(time(0))};
     dist = std::uniform_real_distribution<T>(0.0, 1.0);
     minValue[0] = left, maxValue[0] = right;
     minValue[1] = bottom, maxValue[1] = top;

@@ -22,9 +22,9 @@ class edge;
 class lawson_oriented_walk : public pointlocation
 {
 private:
-    bool isStochastic, isRemembering, isFast;
-    bool isRecent, isSample;
-    unsigned int maxFastSteps, sampleSize;
+    bool isStochastic = false, isRemembering = false, isFast = false;
+    bool isRecent = false, isSample = false;
+    unsigned int maxFastSteps = 0, sampleSize = 0;
     edge* recentEdge;
 
     std::vector <edge*> edgeList;
@@ -33,7 +33,9 @@ public:
     int numTests = 0, numFaces = 0;
 
     void init(plane&);
-    void setParameters(const std::vector <lawsonWalkOptions>& = {}, unsigned int = 0, unsigned int = 0);
+    void setParameters(const std::vector <lawsonWalkOptions>& = {});
+    void setFastSteps(unsigned int);
+    void setSampleSize(unsigned int);
 
     void addEdge(edge*);
     void removeEdge(edge*);
