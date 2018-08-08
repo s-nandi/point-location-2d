@@ -20,8 +20,7 @@ point slab_decomposition::event::position() const
 // Used to sort segments within a slab
 bool slab_decomposition::event::operator < (const event &o) const
 {
-    if (position() != o.position()) position() < o.position();
-    else return isLeft > o.isLeft;
+    return position() < o.position();
 }
 
 /* Slab Decomposition Implementation */
@@ -90,21 +89,6 @@ void slab_decomposition::init(plane &p)
         slabs.push_back(slab_edges);
         slab_positions.push_back(x_coordinates[i]);
     }
-    /*
-    std::cout<<"Finished building"<<std::endl;
-    std::cout << "# slabs: "<<slabs.size()<<std::endl;
-    std::cout << "# locations: " << slab_positions.size() << std::endl;
-
-    for (int i = 0; i < slabs.size(); i++)
-    {
-        std::cout << "Position: " << slab_positions[i] << " Size: " << slabs[i].size()<<std::endl;
-        for (edge* e: slabs[i])
-        {
-            std::cout<<*e<<std::endl;
-        }
-        std::cout<<std::endl;
-    }
-    */
 }
 
 // Finds the index of the slab that p belongs to
@@ -118,17 +102,11 @@ int slab_decomposition::findSlabIndex(point p)
     {
         int m = (l + r) / 2;
         if (p.x < slab_positions[m])
-        {
             r = m - 1;
-        }
         else if (!(m + 1 < slabs.size()) or p.x <= slab_positions[m + 1])
-        {
             return m;
-        }
         else
-        {
             l = m + 1;
-        }
     }
     return l;
 }
@@ -157,17 +135,11 @@ edge* slab_decomposition::findInSlab(int index, point p)
         int m = (l + r) / 2;
 
         if (p.y < getY(slabs[index][m]))
-        {
             r = m - 1;
-        }
-        else if (!( m + 1 < slabs[index].size() ) or p.y <= getY(slabs[index][m + 1]))
-        {
+        else if (!( m + 1 < slabs[index].size()) or p.y <= getY(slabs[index][m + 1]))
             return slabs[index][m];
-        }
         else
-        {
             l = m + 1;
-        }
     }
     return slabs[index][l];
 }
