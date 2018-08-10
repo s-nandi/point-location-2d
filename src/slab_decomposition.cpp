@@ -11,9 +11,9 @@
 point slab_decomposition::event::position() const
 {
     if (isLeft)
-        return segment -> origin().getPosition();
+        return segment -> originPosition();
     else
-        return segment -> destination().getPosition();
+        return segment -> destinationPosition();
 }
 
 // Comparator for two edge pointers that compares the y coordinate of their left endpoints
@@ -38,8 +38,8 @@ void slab_decomposition::init(plane &p)
     std::vector <edge*> edges = p.traverse(primalGraph, traverseEdges);
     for (int i = 0; i < edges.size(); i++)
     {
-        point origin = edges[i] -> origin().getPosition();
-        point destination = edges[i] -> destination().getPosition();
+        point origin = edges[i] -> originPosition();
+        point destination = edges[i] -> destinationPosition();
         // If origin is to the right of destination, flip the edge
         if (origin > destination)
         {
@@ -118,16 +118,14 @@ edge* slab_decomposition::findInSlab(int index, point p)
     // Used to detect if point is above/below edge since we know edges don't intersect within a slab
     auto getY = [](edge* e)
     {
-        return e -> origin().getPosition().y;
+        return e -> originPosition().y;
     };
 
     assert(p.x >= slab_positions[index]);
     assert(index + 1 >= slab_positions.size() or p.x <= slab_positions[index + 1]);
 
     if (p.y < getY(slabs[index][0]) or p.y > getY(slabs[index].back()))
-    {
         return NULL;
-    }
 
     int l = 0, r = slabs[index].size() - 1;
     while (l < r)
@@ -154,12 +152,11 @@ edge* slab_decomposition::locate(point p)
     if (bounding_edge == NULL)
         return NULL;
 
-    point origin = bounding_edge -> origin().getPosition();
-    point destination = bounding_edge -> destination().getPosition();
+    point origin = bounding_edge -> originPosition();
+    point destination = bounding_edge -> destinationPosition();
 
     if (orientation(origin, destination, p) > 0)
         return bounding_edge -> twin();
     else
         return bounding_edge;
 }
-

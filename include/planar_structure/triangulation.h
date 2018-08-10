@@ -17,26 +17,27 @@ enum triangulationType
 };
 
 class edge;
-class lawson_oriented_walk;
+class online_point_location;
+class walking_point_location;
 
 class triangulation : public plane
 {
 private:
-    static const int INF = 1231231234; // Used as default value of infinity for bounding box
+    static const int INF; // Used as default value of infinity for bounding box
 
-    edge* init_bounding_box(T, T, T, T);
+    edge* init_bounding_box(const box&);
 
     void fixDelaunayCondition(point, edge*);
-    void addPoint(point, int, lawson_oriented_walk&, triangulationType);
+    void addPoint(point, int, online_point_location&, triangulationType);
 
-    void init_triangulation(std::vector <point>&, triangulationType = delaunayTriangulation, const std::tuple<T, T, T, T>& = std::tuple<T, T, T, T>{0, 0, 0, 0});
+    static walking_point_location getDefaultLocator(int, triangulationType);
+    void init_triangulation(std::vector <point>&, online_point_location&, triangulationType = delaunayTriangulation, const box& = box{0, 0, 0, 0});
 public:
     int numDelaunayFlips = 0;
 
-    triangulation(){}
-
     void read_PT_file(std::istream &is, triangulationType = delaunayTriangulation);
-    void generateRandomTriangulation(int, triangulationType = delaunayTriangulation, T = -INF, T = INF, T = INF, T = -INF);
+    void generateRandomTriangulation(int, triangulationType = delaunayTriangulation, const box& = box{-INF, INF, INF, -INF});
+    void generateRandomTriangulation(int, online_point_location&, triangulationType = delaunayTriangulation, const box& = box{-INF, INF, INF, -INF});
 };
 
 #endif

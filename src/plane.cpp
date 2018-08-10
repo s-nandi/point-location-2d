@@ -34,6 +34,28 @@ bool plane::flippedEndpoints(edge* e1, edge* e2)
 // extremeVertex is used as the outside face for any edge on the boundary of the plane
 vertex plane::extremeVertex = vertex(0);
 
+/* Helper function for Calculating Bounding Box */
+plane::box plane::calculate_LTRB_bounding_box(std::vector <point> &points)
+{
+    T left, top, right, bottom;
+    for (int i = 0; i < points.size(); i++)
+    {
+        if (i == 0)
+        {
+            left = right = points[i].x;
+            top = bottom = points[i].y;
+        }
+        else
+        {
+            left = std::min(left, points[i].x);
+            right = std::max(right, points[i].x);
+            top = std::max(top, points[i].y);
+            bottom = std::min(bottom, points[i].y);
+        }
+    }
+    return box{left, top, right, bottom};
+}
+
 // Assumes points are given in ccw order
 // Creates a polygon with a left face of Face_number and a right face correspondong to the exterior face
 edge* plane::make_polygon(std::vector <vertex*> &vertices, int face_number)
@@ -54,30 +76,6 @@ edge* plane::make_polygon(std::vector <vertex*> &vertices, int face_number)
     return edges[0];
 }
 
-/* Helper function for Calculating Bounding Box */
-std::tuple <T, T, T, T> plane::calculate_LTRB_bounding_box(std::vector <point> &points)
-{
-    T left, top, right, bottom;
-    for (int i = 0; i < points.size(); i++)
-    {
-        if (i == 0)
-        {
-            left = right = points[i].x;
-            top = bottom = points[i].y;
-        }
-        else
-        {
-            left = std::min(left, points[i].x);
-            right = std::max(right, points[i].x);
-            top = std::max(top, points[i].y);
-            bottom = std::min(bottom, points[i].y);
-        }
-    }
-    --left; --bottom;
-    ++right; ++top;
-    return std::tuple<T, T, T, T>{left, top, right, bottom};
-}
-
 /* Plane Construction */
 
 edge* plane::init_polygon(const std::vector <point> &points)
@@ -91,8 +89,12 @@ edge* plane::init_polygon(const std::vector <point> &points)
     return incidentEdge;
 }
 
-edge* plane::init_bounding_box(T left, T top, T right, T bottom)
+edge* plane::init_bounding_box(const box &LTRB)
 {
+    T left, top, right, bottom;
+    std::tie(left, top, right, bottom) = LTRB;
+    // Check that given LTRB is valid
+    assert(left <= right and bottom <= top);
     std::vector <point> corners = {{left, top}, {left, bottom}, {right, bottom}, {right, top}};
     return init_polygon(corners);
 }
@@ -288,7 +290,7 @@ void plane::interactiveTour(std::istream &is, std::ostream &os)
                 int label;
                 os << "What face label do you want to set for the right face?" << std::endl;;
                 is >> label;
-                curr = connect_split(e1, e2, label);
+                curr = connect(e1, e2, label);
                 e1 = e2 = NULL;
                 break;
             }

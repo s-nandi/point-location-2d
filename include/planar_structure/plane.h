@@ -32,7 +32,6 @@ class pointlocation;
 class plane
 {
 friend pointlocation;
-friend debug;
 private:
     int time = 1;
 
@@ -43,17 +42,18 @@ private:
     static std::vector <edge*> traverseEdgeDfs(edge*, int);
     static std::vector <edge*> traverseVertexDfs(edge*, int);
 protected:
+    typedef std::tuple<T, T, T, T> box;
+
     static vertex extremeVertex;
     edge *incidentEdge = NULL;
 
     static edge* make_polygon(std::vector <vertex*>&, int);
-    static std::tuple <T, T, T, T> calculate_LTRB_bounding_box(std::vector <point>&);
+    static box calculate_LTRB_bounding_box(std::vector <point>&);
 
     edge* init_polygon(const std::vector <point>&);
-    edge* init_bounding_box(T, T, T, T);
+    edge* init_bounding_box(const box&);
     edge* init_subdivision(const std::vector <point>&, const std::vector<std::vector<int>>&);
 public:
-    plane(){}
     std::vector <edge*> traverse(graphType, traversalMode);
 
     void read_OFF_file(std::istream&);

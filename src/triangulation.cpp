@@ -1,18 +1,23 @@
 #include "planar_structure/plane.h"
 #include "planar_structure/triangulation.h"
+#include "point_location/point_location.h"
 #include "point_location/walking/lawson_oriented_walk.h"
+#include "point_location/walking/starting_edge_selector.h"
+#include "point_location/walking/walking_point_location.h"
 #include "uniform_point_rng.h"
 #include "parsing.h"
 #include <assert.h>
 #include <cmath>
 #include <algorithm>
+#include <memory>
 
-edge* triangulation::init_bounding_box(T left, T top, T right, T bottom)
+const int triangulation::INF = 1231231234;
+
+edge* triangulation::init_bounding_box(const box &LTRB)
 {
-    assert(left <= right and bottom <= top);
-    edge* e = plane::init_bounding_box(left, top, right, bottom);
+    edge* e = plane::init_bounding_box(LTRB);
     // Create a diagonal edge to triangulate the bounding box and split the face
-    return connect_split(e -> fnext(), e, 1);
+    return connect(e -> fnext(), e);
 }
 
 // Checks if e violates the delaunay condition upon the insertion of point p
@@ -42,21 +47,21 @@ void triangulation::fixDelaunayCondition(point p, edge* e)
 }
 
 // Adds point to a triangulation and maintains delaunay property as needed
-void triangulation::addPoint(point p, int index, lawson_oriented_walk &locator, triangulationType type)
+void triangulation::addPoint(point p, int index, online_point_location &locator, triangulationType type)
 {
     edge* located_edge = locator.locate(p);
     for (edge &face_edge: *located_edge)
     {
-        point curr_origin = face_edge.origin().getPosition();
-        point curr_destination = face_edge.destination().getPosition();
+        point curr_origin = face_edge.originPosition();
+        point curr_destination = face_edge.destinationPosition();
         if (orientation(curr_origin, p, curr_destination) == 0)
         {
             located_edge = &face_edge;
             break;
         }
     }
-    point origin = located_edge -> origin().getPosition();
-    point destination = located_edge -> destination().getPosition();
+    point origin = located_edge -> originPosition();
+    point destination = located_edge -> destinationPosition();
 
     // If p is already an endpoint of an edge, no need to add it again
     if (p == origin or p == destination) return;
@@ -65,7 +70,7 @@ void triangulation::addPoint(point p, int index, lawson_oriented_walk &locator, 
     {
         edge* old_edge = located_edge;
         // Need to set e to oprev since if p were strictly inside face, the new edges would form cw turns w.r.t. the triangle's edges
-        // Setting e to e -> oprev() ensures that the new edge will form a cw turn with the newly set e
+        // Setting e to e -> oprev() ensures that the new edge will form a cw turn with the newly set e, maintaining the invariant
         located_edge = located_edge -> oprev();
         deleteEdge(old_edge);
         locator.removeEdge(old_edge);
@@ -74,9 +79,7 @@ void triangulation::addPoint(point p, int index, lawson_oriented_walk &locator, 
     // Get all edges immediately enclosing point p
     std::vector <edge*> enclosing_edges;
     for (edge &e: *located_edge)
-    {
         enclosing_edges.push_back(&e);
-    }
     assert(enclosing_edges.size() <= 4);
 
     edge* new_edge = makeEdge();
@@ -88,9 +91,8 @@ void triangulation::addPoint(point p, int index, lawson_oriented_walk &locator, 
     // Stop at size - 1 since the last edge connected by this process was created in the previous step
     for (int i = 0; i < enclosing_edges.size() - 1; i++)
     {
-        new_edge = connect_split(enclosing_edges[i], new_edge -> twin(), 1);
+        new_edge = connect(enclosing_edges[i], new_edge -> twin());
         locator.addEdge(new_edge);
-
     }
     if (type == delaunayTriangulation)
     {
@@ -102,67 +104,21 @@ void triangulation::addPoint(point p, int index, lawson_oriented_walk &locator, 
     }
 }
 
-// Helper function used to figure out how many fastSteps we should take or how many edges to sample to pick the starting edge
-// Typically set to the 4th or 5th root of the number of vertices
-int findCeilNthRoot(int val, int n)
+void triangulation::init_triangulation(std::vector <point> &points, online_point_location &locator, triangulationType type, const box &LTRB)
 {
-    assert(n >= 2 and n <= 10);
-    if (val <= 1) return 1;
-    for (int i = 2; i <= val; i++)
-    {
-        int v = 1;
-        for (int j = 0; j < n; j++)
-        {
-            v *= i;
-            if (v >= val)
-            {
-                return i;
-            }
-        }
-    }
-    // Should never reach this point since i == val iteration of loop will fulfill v >= val even with j == 0 and will thus return a value
-    throw "Failure to terminate";
-    return -1;
-}
-
-void triangulation::init_triangulation(std::vector <point> &points, triangulationType type, const std::tuple <T, T, T, T> &LTRB)
-{
-    lawson_oriented_walk locator;
-
-    // Stochastic walk is unnecessary for delaunay triangulations, but needed to prevent loops in non-delaunay triangulations
-    switch (type)
-    {
-        case delaunayTriangulation:
-        {
-            locator.setParameters({fastRememberingWalk, sampleStart});
-            break;
-        }
-        case arbitraryTriangulation:
-        {
-            locator.setParameters({stochasticWalk, fastRememberingWalk, sampleStart});
-            break;
-        }
-    }
-    locator.setFastSteps(findCeilNthRoot(points.size(), 4));
-    locator.setSampleSize(findCeilNthRoot(points.size(), 3));
-
     // Create bounding box, calculate dimensions if not given
     int left, top, right, bottom;
-    if (LTRB == std::tuple<T, T, T, T>{0, 0, 0, 0})
+    if (LTRB == box{0, 0, 0, 0})
         std::tie(left, top, right, bottom) = plane::calculate_LTRB_bounding_box(points);
     else
         std::tie(left, top, right, bottom) = LTRB;
     // Pad out the bounding box so that we can generate random numbers inclusively in ranges [left, right] and [bottom, top] without letting points fall on the boundary
-    init_bounding_box(left - 1, top + 1, right + 1, bottom - 1);
+    init_bounding_box(box{left - 1, top + 1, right + 1, bottom - 1});
 
-    locator.init(*this);
     // Add bounding box edges to the locator
-    for (edge* e: this -> traverse(primalGraph, traverseEdges))
-    {
-        locator.addEdge(e);
-    }
+    locator.init(*this);
 
-    // Randomly insert the points if finding a delaunay triangulation to achieve average case behavior
+    // Randomly order the points for delaunay triangulations to achieve average case behavior
     if (type == delaunayTriangulation)
         std::random_shuffle(points.begin(), points.end());
 
@@ -175,8 +131,8 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
     int faceNumber = 1;
     for (edge* e: this -> traverse(dualGraph, traverseNodes))
     {
-        // Skip labeling the exterior face (already labelled as the extreme vertex)
-        if (e -> origin().getLabel() == 0) continue;
+        // Skip labeling the exterior face (already labeled as the extreme vertex)
+        if (e -> getOrigin() -> getLabel() == 0) continue;
 
         vertex* face = new vertex(faceNumber);
         e -> rot() -> labelFace(face);
@@ -184,16 +140,46 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
     }
 }
 
-void triangulation::generateRandomTriangulation(int numPoints, triangulationType type, T left, T top, T right, T bottom)
+walking_point_location triangulation::getDefaultLocator(int numPoints, triangulationType type)
 {
+    std::vector <lawsonWalkOptions> walkOptions;
+    int fastWalk = 0;
+    // Stochastic walk is unnecessary for delaunay triangulations, but needed to prevent loops in non-delaunay triangulations
+    switch (type)
+    {
+        case delaunayTriangulation:
+            walkOptions = {fastRememberingWalk};
+            fastWalk = std::pow(numPoints, 1.0 / 4.0);
+            break;
+        case arbitraryTriangulation:
+            walkOptions = {stochasticWalk, fastRememberingWalk};
+            fastWalk = std::pow(numPoints, 1.0 / 4.0);
+            break;
+    }
+    std::unique_ptr <walking_scheme> locator_ptr = std::make_unique<lawson_oriented_walk>(lawson_oriented_walk(walkOptions, fastWalk));
+    std::unique_ptr <starting_edge_selector> selector_ptr = std::make_unique<starting_edge_selector>(starting_edge_selector({selectSample}, std::pow(numPoints, 1.0 / 3.0)));
+    walking_point_location locator(locator_ptr, selector_ptr);
+    return locator;
+}
+
+void triangulation::generateRandomTriangulation(int numPoints, triangulationType type, const box &LTRB)
+{
+    walking_point_location locator = getDefaultLocator(numPoints, type);
+    generateRandomTriangulation(numPoints, locator, type, LTRB);
+}
+
+void triangulation::generateRandomTriangulation(int numPoints, online_point_location &locator, triangulationType type, const box &LTRB)
+{
+    T left, top, right, bottom;
+    std::tie(left, top, right, bottom) = LTRB;
     uniform_point_rng pointRng(left, top, right, bottom);
     std::vector <point> points = pointRng.getRandom(numPoints);
-
-    init_triangulation(points, type, std::tuple<T, T, T, T>{left, top, right, bottom});
+    init_triangulation(points, locator, type, LTRB);
 }
 
 void triangulation::read_PT_file(std::istream &is, triangulationType type)
 {
     std::vector <point> points = parse_PT_file(is);
-    init_triangulation(points, type);
+    walking_point_location locator = getDefaultLocator(points.size(), type);
+    init_triangulation(points, locator, type);
 }

@@ -4,12 +4,7 @@
 #include <vector>
 #include "point_location/point_location.h"
 
-class point2D;
-typedef point2D point;
-class plane;
-class edge;
-
-class slab_decomposition : public pointlocation
+class slab_decomposition : public point_location
 {
 private:
     struct event;
@@ -20,7 +15,6 @@ private:
     edge* findInSlab(int, point);
 public:
     void init(plane&);
-
     edge* locate(point);
 };
 

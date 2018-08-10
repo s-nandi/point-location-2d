@@ -5,12 +5,9 @@
 #include <assert.h>
 #include <ctime>
 
-void lawson_oriented_walk::init(plane &pl)
+lawson_oriented_walk::lawson_oriented_walk(const std::vector <lawsonWalkOptions> &options, unsigned int fastSteps)
 {
-    pointlocation::init(pl);
-    numTests = numFaces = 0;
-    for (edge* e: pl.traverse(primalGraph, traverseEdges))
-        addEdge(e);
+    setParameters(options, fastSteps);
 }
 
 /*
@@ -21,9 +18,10 @@ void lawson_oriented_walk::init(plane &pl)
        since it assumes that the current face is not the target face and that the plane is a triangulation
 *      eventually (after fastSteps steps) reverts back to regular (non-fast) behavior to identify the target face
 */
-void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &options)
+void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &options, unsigned int fastSteps)
 {
-    isStochastic = isRemembering = isFast = isRecent = isSample = false;
+    isStochastic = isRemembering = isFast = false;
+    maxFastSteps = fastSteps;
     for (lawsonWalkOptions option: options)
     {
         switch (option)
@@ -37,48 +35,22 @@ void lawson_oriented_walk::setParameters(const std::vector <lawsonWalkOptions> &
             case fastRememberingWalk:
                 isFast = isRemembering = true;
                 break;
-            case recentStart:
-                isRecent = true;
-                break;
-            case sampleStart:
-                isSample = true;
-                break;
         }
     }
-}
-
-void lawson_oriented_walk::setFastSteps(unsigned int fastSteps)
-{
-    maxFastSteps = fastSteps;
-}
-
-void lawson_oriented_walk::setSampleSize(unsigned int numSample)
-{
-    sampleSize = numSample;
 }
 
 /*
 * Returns pointer to some edge that belongs to the face that contains p
 * If multiple faces contain p (if p is on an edge or coincides with a vertex), an arbitrary edge is returned
-* Utilizes lawsons oriented walk algorthm: the walk proceeds in the direction of any edge that creates a right turn with query point p
+* Utilizes lawsons oriented walk algorithm: the walk proceeds in the direction of any edge that creates a right turn with query point p
 * Returns NULL if p is outside the plane
 */
-edge* lawson_oriented_walk::locate(point p)
+edge* lawson_oriented_walk::locate(edge* startEdge, point p)
 {
-    // First check if parameters are valid
-
     // Iff not a fast walk, maxFastSteps should remain to 0
     assert(isFast ^ (maxFastSteps == 0));
-    // Iff not using the best edge out of a sample to start, sampleSize must zero
-    assert(isSample ^ (sampleSize == 0));
-    // Cannot pick two starting edge modes at the same time
-    assert(!isSample or !isRecent);
 
-    edge* currEdge;
-    if (isRecent and recentEdge != NULL) currEdge = recentEdge;
-    else if(isSample) currEdge = bestFromSample(p);
-    else currEdge = startingEdge;
-
+    edge* currEdge = startEdge;
     if (isFast)
     {
         // A fast remembering walk assumes that the current face is not the target face and that plane is a triangulation
@@ -88,22 +60,18 @@ edge* lawson_oriented_walk::locate(point p)
             edge* e1 = currEdge -> fnext();
             edge* e2 = e1 -> fnext();
 
-            auto orient = orientation(e1 -> origin().getPosition(), e1 -> destination().getPosition(), p);
+            auto orient = orientation(e1 -> originPosition(), e1 -> destinationPosition(), p);
             numTests++;
             edge* candidate;
             // If assumption is valid, then if e1 does not make a right turn, then e2 must make a right turn
             if (orient > 0)
-            {
                 candidate = e1 -> twin();
-            }
             else
-            {
                 candidate = e2 -> twin();
-            }
             numFaces++;
             // If e2 is a boundary edge, point p might be outside the plane or the assumption that the current face is not the target face might be incorrect
             // End the fast portion of the fast remembering walk and let the regular walk determine which case is valid
-            if (candidate -> leftface().getLabel() == 0)
+            if (candidate -> rightfaceLabel() == 0)
                 break;
             else
                 currEdge = candidate;
@@ -131,12 +99,12 @@ edge* lawson_oriented_walk::locate(point p)
         for (int i = 0; i < face_edges.size(); i++)
         {
             edge e = face_edges[i];
-            auto orient = orientation(e.origin().getPosition(), e.destination().getPosition(), p);
+            auto orient = orientation(e.originPosition(), e.destinationPosition(), p);
             numTests++;
             // If p is to the right of e, go to the twin edge on the right face of e
             if (orient > 0)
             {
-                if (e.rightface().getLabel() == 0) return NULL;
+                if (e.rightfaceLabel() == 0) return NULL;
                 else
                 {
                     currEdge = e.twin();
@@ -151,61 +119,6 @@ edge* lawson_oriented_walk::locate(point p)
         // If no right turns are made from the face edges to point p, then p must be inside the face
         if (!rightTurn) break;
     }
-    if (isRecent)
-        recentEdge = currEdge;
 
     return currEdge;
-}
-
-void lawson_oriented_walk::addEdge(edge* e)
-{
-    if (isSample)
-    {
-        edgeList.push_back(e);
-        validEdges.insert(e);
-    }
-}
-
-void lawson_oriented_walk::removeEdge(edge* e)
-{
-    if (isSample)
-    {
-        validEdges.erase(e);
-    }
-}
-
-edge* lawson_oriented_walk::bestFromSample(point p)
-{
-    assert(edgeList.size() > 0);
-
-    std::mt19937 gen{static_cast<long unsigned int>(time(0))};
-    std::uniform_int_distribution <int> dist(0, edgeList.size() - 1);
-
-    edge* closestEdge = NULL;
-    T distToClosest;
-    for (int i = 0; i < sampleSize; i++)
-    {
-        bool foundEdge = false;
-        edge* curr;
-        while (!foundEdge)
-        {
-            int randomIndex = dist(gen);
-            if (validEdges.count(edgeList[randomIndex]) == 1)
-            {
-                curr = edgeList[randomIndex];
-                foundEdge = true;
-            }
-        }
-
-        point a = curr -> origin().getPosition();
-        point b = curr -> destination().getPosition();
-        point midpt = (a + b) / 2;
-        T distSq = (midpt - p).magnitudeSquared();
-        if (i == 0 or distSq < distToClosest)
-        {
-            closestEdge = curr;
-            distToClosest = distSq;
-        }
-    }
-    return closestEdge;
 }

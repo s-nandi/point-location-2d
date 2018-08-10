@@ -108,28 +108,44 @@ vertex* edge::getDest() const
     return twin() -> orig;
 }
 
-// Return origin if it was set, otherwise return default vertex
 vertex& edge::origin() const
 {
     return *getOrigin();
 }
 
-// Return destination if it was set, otherwise return default vertex
 vertex& edge::destination() const
 {
     return *getDest();
 }
 
-// Return left face if it was set, otherwise return default vertex
 vertex& edge::leftface() const
 {
     return *(invrot() -> getOrigin());
 }
 
-// Return right face if it was set, otherwise return default vertex
 vertex& edge::rightface() const
 {
     return *(invrot() -> getDest());
+}
+
+point edge::originPosition() const
+{
+    return origin().getPosition();
+}
+
+point edge::destinationPosition() const
+{
+    return destination().getPosition();
+}
+
+int edge::leftfaceLabel() const
+{
+    return leftface().getLabel();
+}
+
+int edge::rightfaceLabel() const
+{
+    return rightface().getLabel();
 }
 
 // Sets origin/destination to o and d respectively
@@ -148,9 +164,7 @@ void edge::labelFace(vertex* f)
 {
     edge* irot = this -> invrot();
     for (auto it = irot -> begin(incidentToOrigin); it != irot -> end(incidentToOrigin); ++it)
-    {
         it -> setEndpoints(f);
-    }
 }
 
 /* Edge Operations */
@@ -182,32 +196,26 @@ void splice(edge* a, edge* b)
 }
 
 /*
-* Assumes a's destination is not b's origin
-* Connects destination of a to origin of b and sets endpoints of the created edge
-* Does not modify left and right faces of newly created edge
-* Can be used to split a face into smaller faces while keeping the same face labels (ex. triangulating a polygon)
+* Assumes a's destination is not b's origin and that face_number is strictly positive
+* Connects destination of a to origin of b and sets endpoints/faces of the created edge
+* face_number parameter used to label the new face created (to the left of the new edge)
+* If face_number not passed in, the new face created is labeled the same as the left face of a
 */
-edge* connect(edge* a, edge* b)
+edge* connect(edge* a, edge* b, int face_number)
 {
+    // Make sure edge a does not already connect into edge b
     assert(a -> getDest() != b -> getOrigin());
 	edge* e = makeEdge();
 	splice(e, a -> fnext());
 	splice(e -> twin(), b);
     e -> setEndpoints(a -> getDest(), b -> getOrigin(), a -> invrot() -> getOrigin(), a -> invrot() -> getOrigin());
-	return e;
-}
-
-/*
-* Assumes a's destination is not b's origin and that face_number is strictly positive
-* Connects destination of a to origin of b and sets endpoints/faces of the created edge
-* face_number parameter used to label the new face created (to the left of the new edge)
-*/
-edge* connect_split(edge* a, edge* b, int face_number)
-{
-    assert(face_number > 0);
-    edge* e = connect(a, b);
-    // sets the left face pointer of all edges on the same left face as e to a new face
-    vertex* new_face = new vertex(face_number);
+    // Sets the left face pointer of all edges on the same left face as e to a new face
+    // If face_number not passed in, uses the preexisting face label (left face of a)
+    vertex* new_face;
+    if (face_number != -1)
+        new_face = new vertex(face_number);
+    else
+        new_face = new vertex(e -> leftface().getLabel());
     e -> labelFace(new_face);
 	return e;
 }

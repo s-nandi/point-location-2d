@@ -6,14 +6,24 @@ typedef point2D point;
 class edge;
 class plane;
 
-class pointlocation
+class point_location
 {
-protected:
-    plane* pl;
-    edge* startingEdge;
 public:
-    virtual void init(plane&);
+    virtual void init(plane&) = 0;
     virtual edge* locate(point) = 0;
+};
+
+class walking_scheme
+{
+public:
+    virtual edge* locate(edge*, point) = 0;
+};
+
+class online_point_location : public point_location
+{
+public:
+    virtual void addEdge(edge*) = 0;
+    virtual void removeEdge(edge*) = 0;
 };
 
 #endif

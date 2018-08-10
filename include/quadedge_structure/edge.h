@@ -15,17 +15,16 @@ enum incidenceMode
     incidentToOrigin,
 };
 
+class vertex;
 class quadedge;
 class plane;
 class triangulation;
-class debug;
 
 class edge
 {
 friend quadedge;
 friend plane;
 friend triangulation;
-friend debug;
 private:
     int type = -1;
     edge *next = NULL;
@@ -49,6 +48,11 @@ public:
     vertex& leftface() const;
     vertex& rightface() const;
 
+    point originPosition() const;
+    point destinationPosition() const;
+    int leftfaceLabel() const;
+    int rightfaceLabel() const;
+
     edge* rot() const;
     edge* invrot() const;
     edge* twin() const;
@@ -59,8 +63,7 @@ public:
 
     friend void splice(edge*, edge*);
     friend void deleteEdge(edge*);
-    friend edge* connect(edge*, edge*);
-    friend edge* connect_split(edge*, edge*, int);
+    friend edge* connect(edge*, edge*, int = -1);
     friend edge* mergeTwins(edge*, edge*);
     friend edge* rotateInEnclosing(edge*);
 

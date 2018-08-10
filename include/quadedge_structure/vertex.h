@@ -2,22 +2,20 @@
 #define VERTEX_H_DEFINED
 
 #include "geo_primitives/point2D.h"
-#include "geo_primitives/point3D.h"
 
 typedef point2D point;
 
 class plane;
-
 class vertex
 {
 friend plane;
 private:
-    int label;
     point position;
+    int label;
     bool hasPosition = false;
-    int lastUsed = -1;
 
     bool use(int);
+    int lastUsed = -1;
 public:
     vertex(){}
     vertex(int);
