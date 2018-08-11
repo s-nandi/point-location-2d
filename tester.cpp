@@ -3,10 +3,12 @@
 #include <chrono>
 #include <cmath>
 #include <algorithm>
-#include "uniform_point_rng.h"
 #include "planar_structure/triangulation.h"
 #include "point_location/walking/lawson_oriented_walk.h"
+#include "point_location/walking/walking_point_location.h"
 #include "point_location/non_walking/slab_decomposition.h"
+#include "uniform_point_rng.h"
+#include "testing.h"
 
 /* Helper Functions for point inclusion in face and delaunay condition checking */
 bool in_padded_bounding_box(point p, int left, int top, int right, int bottom)
@@ -17,12 +19,12 @@ bool in_padded_bounding_box(point p, int left, int top, int right, int bottom)
 bool in_face(point p, edge* e)
 {
     // Make sure that edge is not on the outside face
-    assert(e -> leftface().getLabel() != 0);
+    assert(e -> leftfaceLabel() != 0);
     for (edge &face_edge: *e)
     {
         // Assumes that edges in a face are ccw oriented
         // If the point is strictly to the right of an edge, it cannot be inside the face
-        if (orientation(e -> origin().getPosition(), e -> destination().getPosition(), p) > 0)
+        if (orientation(e -> originPosition(), e -> destinationPosition(), p) > 0)
         {
             return false;
         }
@@ -32,12 +34,12 @@ bool in_face(point p, edge* e)
 
 bool fulfills_delaunay(edge *e)
 {
-    if (e -> leftface().getLabel() == 0 or e -> rightface().getLabel() == 0)
+    if (e -> leftfaceLabel() == 0 or e -> rightfaceLabel() == 0)
         return true;
-    point a = e -> origin().getPosition();
-    point b = e -> destination().getPosition();
-    point c = e -> fnext() -> destination().getPosition();
-    point d = e -> twin() -> fnext() -> destination().getPosition();
+    point a = e -> originPosition();
+    point b = e -> destinationPosition();
+    point c = e -> fnext() -> destinationPosition();
+    point d = e -> twin() -> fnext() -> destinationPosition();
     assert(orientation(a, b, c) <= 0);
     assert(orientation(b, a, d) <= 0);
     bool delaunay_abc = inCircle(d, a, b, c) <= 0;
@@ -51,70 +53,36 @@ bool fulfills_delaunay(edge *e)
     return res;
 }
 
-/* Helper Functions for Timing */
-
-using clock_type = std::chrono::high_resolution_clock;
-using duration_type =  std::chrono::duration<double>;
-using time_type = std::chrono::time_point<clock_type>;
-
-clock_type timer;
-time_type start_time, end_time;
-
-inline void startTimer()
-{
-    start_time = clock_type::now();
-}
-
-inline double endTimer()
-{
-    end_time = clock_type::now();
-    duration_type duration = end_time - start_time;
-    return duration.count();
-}
-
-/* Helper Functions for Printing Timer and Correctness*/
-
-void print_time(const std::string &name, double t)
-{
-    std::cout << "Time taken for " << name << ": " << t << " s" << std::endl;
-}
-
-void print_time(const std::string &name)
-{
-    std::cout << "Time taken for " << name << ": " << ((duration_type) (end_time - start_time)).count() << " s" << std::endl;
-}
-
-void print_percent_correct(const std::string &name, int correct, int total)
-{
-    double percentage = (double) (correct * 100) / total;
-    std::cout << name << ": " << correct << " / " << total << " (" << percentage << "%)" << std::endl;
-}
-
 /* Tests */
 
-void test_random_point_location_in_random_triangulation(pointlocation &locator, int numPoints, bool delaunay)
+void test_random_point_location_in_random_triangulation(point_location &locator, int numPoints, bool delaunay)
 {
     triangulation tr = triangulation();
     int numCorrect = 0;
 
     int left = -1000000, top = 10000000, right = 500000, bottom = -10000000;
+    std::tuple <T, T, T, T> bounding_box{left, top, right, bottom};
     double padding_coeff = 1.3; // So that some points are outside bounding box;
 
     startTimer();
     if (!delaunay)
     {
-        tr.generateRandomTriangulation(numPoints, arbitraryTriangulation, left, top, right, bottom);
+        tr.generateRandomTriangulation(numPoints, arbitraryTriangulation, bounding_box);
         endTimer();
         print_time("Generating arbitrary random triangulation");
     }
     else
     {
-        tr.generateRandomTriangulation(numPoints, delaunayTriangulation, left, top, right, bottom);
+        tr.generateRandomTriangulation(numPoints, delaunayTriangulation, bounding_box);
         endTimer();
         print_time("Generating delaunay random triangulation");
     }
+    startTimer();
     locator.init(tr);
+    endTimer();
+    print_time("Time to construct locator");
 
+    /* Check that each face has a unique label */
     std::vector <int> faces;
     for (edge* e: tr.traverse(dualGraph, traverseNodes))
     {
@@ -261,8 +229,10 @@ int main()
 {
     /* Rng Checking */
 
+    /*
     test_rng_distribution();
     print_time("test_rng_distribution");
+    */
 
     /* Point Location Testing */
 
@@ -272,28 +242,26 @@ int main()
 
     slab_decomposition slab_locator;
 
-    test_random_point_location_in_random_triangulation(slab_locator, numPoints, false);
-    print_time("test_random_point_location_in_random_arbitrary_triangulation slab");
-
     test_random_point_location_in_random_triangulation(slab_locator, numPoints, true);
     print_time("test_random_point_location_in_random_delaunay_triangulation slab");
 
+    test_random_point_location_in_random_triangulation(slab_locator, numPoints, false);
+    print_time("test_random_point_location_in_random_arbitrary_triangulation slab");
+
     /* Oriented Walk */
 
-    lawson_oriented_walk walk_locator;
-    walk_locator.setParameters({stochasticWalk, sampleStart, fastRememberingWalk});
-    walk_locator.setFastSteps(std::pow(numPoints, 1.0/4.0));
-    walk_locator.setSampleSize(std::pow(numPoints, 1.0/3.0));
-
-    test_random_point_location_in_random_triangulation(walk_locator, numPoints, false);
-    print_time("test_random_point_location_in_random_arbitrary_triangulation walking");
+    std::unique_ptr <walking_scheme> locator_ptr = std::make_unique<lawson_oriented_walk>(lawson_oriented_walk({stochasticWalk, fastRememberingWalk}, std::pow(numPoints, 1.0/4.0)));
+    std::unique_ptr <starting_edge_selector> selector_ptr = std::make_unique<starting_edge_selector>(starting_edge_selector(selectSample, std::pow(numPoints, 1.0/3.0)));
+    walking_point_location walk_locator(locator_ptr, selector_ptr);
 
     test_random_point_location_in_random_triangulation(walk_locator, numPoints, true);
     print_time("test_random_point_location_in_random_delaunay_triangulation walking");
 
+    test_random_point_location_in_random_triangulation(walk_locator, numPoints, false);
+    print_time("test_random_point_location_in_random_arbitrary_triangulation walking");
+
     /* Delaunay Speed Testing */
 
-    /*
     test_delaunay_condition_for_random_triangulation(10000);
     print_time("test_delaunay_condition_for_random_triangulation");
 
@@ -305,7 +273,6 @@ int main()
 
     test_delaunay_condition_for_random_triangulation(100000);
     print_time("test_delaunay_condition_for_random_triangulation");
-    */
 
     return 0;
 }
