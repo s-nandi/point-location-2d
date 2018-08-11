@@ -42,7 +42,7 @@ void starting_edge_selector::locatedEdge(edge* e)
 edge* starting_edge_selector::getStartingEdge(point p)
 {
     // Iff not using the best edge out of a sample to start, sampleSize must zero
-    assert(mode == selectSample ^ (sampleSize == 0));
+    assert((mode == selectSample) ^ (sampleSize == 0));
 
     if (mode == selectRecent and recentEdge != NULL)
         return recentEdge;
@@ -56,7 +56,7 @@ edge* starting_edge_selector::bestFromSample(point p)
 {
     assert(edgeList.size() > 0);
 
-    std::mt19937 gen{static_cast<long unsigned int>(time(0))};
+    std::mt19937 gen{static_cast<unsigned int>(time(0))};
     std::uniform_int_distribution <int> dist(0, edgeList.size() - 1);
 
     edge* closestEdge = NULL;

@@ -199,7 +199,7 @@ void splice(edge* a, edge* b)
 * Assumes a's destination is not b's origin and that face_number is strictly positive
 * Connects destination of a to origin of b and sets endpoints/faces of the created edge
 * face_number parameter used to label the new face created (to the left of the new edge)
-* If face_number not passed in, the new face created is labeled the same as the left face of a
+* If face_number is -1, the new face created is labeled the same as the left face of a
 */
 edge* connect(edge* a, edge* b, int face_number)
 {

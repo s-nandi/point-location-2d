@@ -63,7 +63,7 @@ public:
 
     friend void splice(edge*, edge*);
     friend void deleteEdge(edge*);
-    friend edge* connect(edge*, edge*, int = -1);
+    friend edge* connect(edge*, edge*, int);
     friend edge* mergeTwins(edge*, edge*);
     friend edge* rotateInEnclosing(edge*);
 

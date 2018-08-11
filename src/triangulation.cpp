@@ -17,7 +17,7 @@ edge* triangulation::init_bounding_box(const box &LTRB)
 {
     edge* e = plane::init_bounding_box(LTRB);
     // Create a diagonal edge to triangulate the bounding box and split the face
-    return connect(e -> fnext(), e);
+    return connect(e -> fnext(), e, -1);
 }
 
 // Checks if e violates the delaunay condition upon the insertion of point p
@@ -91,7 +91,7 @@ void triangulation::addPoint(point p, int index, online_point_location &locator,
     // Stop at size - 1 since the last edge connected by this process was created in the previous step
     for (int i = 0; i < enclosing_edges.size() - 1; i++)
     {
-        new_edge = connect(enclosing_edges[i], new_edge -> twin());
+        new_edge = connect(enclosing_edges[i], new_edge -> twin(), -1);
         locator.addEdge(new_edge);
     }
     if (type == delaunayTriangulation)
