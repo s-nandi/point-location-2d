@@ -11,8 +11,6 @@
 #include <algorithm>
 #include <memory>
 
-const int triangulation::INF = 1231231234;
-
 edge* triangulation::init_bounding_box(const box &LTRB)
 {
     edge* e = plane::init_bounding_box(LTRB);
@@ -26,12 +24,12 @@ edge* triangulation::init_bounding_box(const box &LTRB)
 void triangulation::fixDelaunayCondition(point p, edge* e)
 {
     // If e is a boundary edge, it cannot be flipped since it does not have an enclosing quadrilateral
-    if (e -> leftface().getLabel() == 0 or e -> rightface().getLabel() == 0) return;
-    point a = e -> origin().getPosition();
-    point b = e -> destination().getPosition();
-    point c = e -> twin() -> fnext() -> destination().getPosition();
+    if (e -> leftfaceLabel() == 0 or e -> rightfaceLabel() == 0) return;
+    point a = e -> originPosition();
+    point b = e -> destinationPosition();
+    point c = e -> twin() -> fnext() -> destinationPosition();
 
-    assert(e -> fnext() -> destination().getPosition() == p);
+    assert(e -> fnext() -> destinationPosition() == p);
     assert(orientation(a, b, c) > 0);
     // If delaunay condition is violated, swap the offending edge
     if (inCircle(c, a, b, p) > 0)
@@ -39,7 +37,7 @@ void triangulation::fixDelaunayCondition(point p, edge* e)
         edge* fixed_edge = rotateInEnclosing(e);
         numDelaunayFlips++;
         // All flipped edges will be incident to the inserted point p
-        assert(fixed_edge -> origin().getPosition() == p or fixed_edge -> destination().getPosition() == p);
+        assert(fixed_edge -> originPosition() == p or fixed_edge -> destinationPosition() == p);
         // Need to check if neighbors of the rotated edge need to be fixed
         fixDelaunayCondition(p, fixed_edge -> fprev());
         fixDelaunayCondition(p, fixed_edge -> twin() -> fnext());
@@ -104,6 +102,30 @@ void triangulation::addPoint(point p, int index, online_point_location &locator,
     }
 }
 
+void triangulation::init_triangulation(std::vector <point> &points, triangulationType type, const box &LTRB)
+{
+    int numPoints = points.size();
+
+    std::vector <lawsonWalkOptions> walkOptions;
+    int fastWalk = 0;
+    // Stochastic walk is unnecessary for delaunay triangulations, but needed to prevent loops in non-delaunay triangulations
+    switch (type)
+    {
+        case delaunayTriangulation:
+            walkOptions = {fastRememberingWalk};
+            fastWalk = std::pow(numPoints, 1.0 / 4.0);
+            break;
+        case arbitraryTriangulation:
+            walkOptions = {stochasticWalk, fastRememberingWalk};
+            fastWalk = std::pow(numPoints, 1.0 / 4.0);
+            break;
+    }
+    std::unique_ptr <walking_scheme> locator_ptr = std::make_unique<lawson_oriented_walk>(lawson_oriented_walk(walkOptions, fastWalk));
+    std::unique_ptr <starting_edge_selector> selector_ptr = std::make_unique<starting_edge_selector>(starting_edge_selector({selectSample}, std::pow(numPoints, 1.0 / 3.0)));
+    walking_point_location locator(locator_ptr, selector_ptr);
+    init_triangulation(points, locator, type, LTRB);
+}
+
 void triangulation::init_triangulation(std::vector <point> &points, online_point_location &locator, triangulationType type, const box &LTRB)
 {
     // Create bounding box, calculate dimensions if not given
@@ -140,39 +162,16 @@ void triangulation::init_triangulation(std::vector <point> &points, online_point
     }
 }
 
-walking_point_location triangulation::getDefaultLocator(int numPoints, triangulationType type)
-{
-    std::vector <lawsonWalkOptions> walkOptions;
-    int fastWalk = 0;
-    // Stochastic walk is unnecessary for delaunay triangulations, but needed to prevent loops in non-delaunay triangulations
-    switch (type)
-    {
-        case delaunayTriangulation:
-            walkOptions = {fastRememberingWalk};
-            fastWalk = std::pow(numPoints, 1.0 / 4.0);
-            break;
-        case arbitraryTriangulation:
-            walkOptions = {stochasticWalk, fastRememberingWalk};
-            fastWalk = std::pow(numPoints, 1.0 / 4.0);
-            break;
-    }
-    std::unique_ptr <walking_scheme> locator_ptr = std::make_unique<lawson_oriented_walk>(lawson_oriented_walk(walkOptions, fastWalk));
-    std::unique_ptr <starting_edge_selector> selector_ptr = std::make_unique<starting_edge_selector>(starting_edge_selector({selectSample}, std::pow(numPoints, 1.0 / 3.0)));
-    walking_point_location locator(locator_ptr, selector_ptr);
-    return locator;
-}
-
 void triangulation::generateRandomTriangulation(int numPoints, triangulationType type, const box &LTRB)
 {
-    walking_point_location locator = getDefaultLocator(numPoints, type);
-    generateRandomTriangulation(numPoints, locator, type, LTRB);
+    uniform_point_rng pointRng(LTRB);
+    std::vector <point> points = pointRng.getRandom(numPoints);
+    init_triangulation(points, type, LTRB);
 }
 
 void triangulation::generateRandomTriangulation(int numPoints, online_point_location &locator, triangulationType type, const box &LTRB)
 {
-    T left, top, right, bottom;
-    std::tie(left, top, right, bottom) = LTRB;
-    uniform_point_rng pointRng(left, top, right, bottom);
+    uniform_point_rng pointRng(LTRB);
     std::vector <point> points = pointRng.getRandom(numPoints);
     init_triangulation(points, locator, type, LTRB);
 }
@@ -180,6 +179,5 @@ void triangulation::generateRandomTriangulation(int numPoints, online_point_loca
 void triangulation::read_PT_file(std::istream &is, triangulationType type)
 {
     std::vector <point> points = parse_PT_file(is);
-    walking_point_location locator = getDefaultLocator(points.size(), type);
-    init_triangulation(points, locator, type);
+    init_triangulation(points, type);
 }

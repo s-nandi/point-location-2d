@@ -4,6 +4,7 @@
 #include "quadedge_structure/quadedge.h"
 #include <vector>
 #include <iostream>
+#include <tuple>
 
 /*
 * Used as parameter for traversing plane
@@ -33,8 +34,6 @@ class plane
 {
 friend pointlocation;
 private:
-    int time = 1;
-
     static int nextIndex(int, int);
     static bool sameEndpoints(edge*, edge*);
     static bool flippedEndpoints(edge*, edge*);
@@ -42,9 +41,12 @@ private:
     static std::vector <edge*> traverseEdgeDfs(edge*, int);
     static std::vector <edge*> traverseVertexDfs(edge*, int);
 protected:
-    typedef std::tuple<T, T, T, T> box;
+    using box = std::tuple<T, T, T, T>;
 
+    static int time;
+    static const int INF; // Used as default value of infinity for bounding box
     static vertex extremeVertex;
+
     edge *incidentEdge = NULL;
 
     static edge* make_polygon(std::vector <vertex*>&, int);
@@ -54,6 +56,7 @@ protected:
     edge* init_bounding_box(const box&);
     edge* init_subdivision(const std::vector <point>&, const std::vector<std::vector<int>>&);
 public:
+    box bounds;
     std::vector <edge*> traverse(graphType, traversalMode);
 
     void read_OFF_file(std::istream&);

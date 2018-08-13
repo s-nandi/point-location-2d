@@ -33,6 +33,8 @@ bool plane::flippedEndpoints(edge* e1, edge* e2)
 
 // extremeVertex is used as the outside face for any edge on the boundary of the plane
 vertex plane::extremeVertex = vertex(0);
+const int plane::INF = 1231231234;
+int plane::time = 1;
 
 /* Helper function for Calculating Bounding Box */
 plane::box plane::calculate_LTRB_bounding_box(std::vector <point> &points)
@@ -95,6 +97,7 @@ edge* plane::init_bounding_box(const box &LTRB)
     std::tie(left, top, right, bottom) = LTRB;
     // Check that given LTRB is valid
     assert(left <= right and bottom <= top);
+    bounds = LTRB;
     std::vector <point> corners = {{left, top}, {left, bottom}, {right, bottom}, {right, top}};
     return init_polygon(corners);
 }
@@ -224,7 +227,6 @@ std::vector <edge*> plane::traverse(graphType gm, traversalMode tm)
         return traverseEdgeDfs(startingEdge, time++);
     else if (tm == traverseNodes)
         return traverseVertexDfs(startingEdge, time++);
-    else throw "Invalid traversalMode";
 }
 
 /* Parsing */

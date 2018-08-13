@@ -9,13 +9,13 @@ struct invalidLabelException : std::exception
     }
 };
 
-vertex::vertex(int i)
+vertex::vertex(int i) : lastUsed(-1)
 {
     if (i < 0) throw invalidLabelException();
     label = i;
 }
 
-vertex::vertex(point p, int i)
+vertex::vertex(point p, int i) : lastUsed(-1)
 {
     if (i < 0) throw invalidLabelException();
     position = p, label = i;

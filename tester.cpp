@@ -7,8 +7,11 @@
 #include "point_location/walking/lawson_oriented_walk.h"
 #include "point_location/walking/walking_point_location.h"
 #include "point_location/non_walking/slab_decomposition.h"
+#include "point_location/non_walking/naive_quadtree.h"
 #include "uniform_point_rng.h"
 #include "testing.h"
+
+#include "data_structures/quadtree.h"
 
 /* Helper Functions for point inclusion in face and delaunay condition checking */
 bool in_padded_bounding_box(point p, int left, int top, int right, int bottom)
@@ -57,7 +60,7 @@ bool fulfills_delaunay(edge *e)
 
 void test_random_point_location_in_random_triangulation(point_location &locator, int numPoints, bool delaunay)
 {
-    triangulation tr = triangulation();
+    triangulation tr;
     int numCorrect = 0;
 
     int left = -1000000, top = 10000000, right = 500000, bottom = -10000000;
@@ -89,10 +92,14 @@ void test_random_point_location_in_random_triangulation(point_location &locator,
         faces.push_back(e -> origin().getLabel());
     }
     std::sort(faces.begin(), faces.end());
+    bool failure = false;
     for (int i = 0; i < faces.size(); i++)
     {
-        assert(i == faces[i]);
+        if (i != faces[i])
+            failure = true;
     }
+    assert(faces.size() > 0);
+    assert(!failure);
 
     uniform_point_rng rng(padding_coeff * left, padding_coeff * top, padding_coeff * right, padding_coeff * bottom);
     std::vector <point> locating = rng.getRandom(numPoints);
@@ -229,14 +236,21 @@ int main()
 {
     /* Rng Checking */
 
-    /*
     test_rng_distribution();
     print_time("test_rng_distribution");
-    */
 
     /* Point Location Testing */
 
     int numPoints = 10000;
+
+    /* Naive Quadtree */
+    naive_quadtree quad_locator(90, 60);
+
+    test_random_point_location_in_random_triangulation(quad_locator, numPoints, true);
+    print_time("test_random_point_location_in_random_delaunay_triangulation quad");
+
+    test_random_point_location_in_random_triangulation(quad_locator, numPoints, false);
+    print_time("test_random_point_location_in_random_arbitrary_triangulation quad");
 
     /* Slab decomposition */
 

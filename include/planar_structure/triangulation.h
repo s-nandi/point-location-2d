@@ -23,14 +23,12 @@ class walking_point_location;
 class triangulation : public plane
 {
 private:
-    static const int INF; // Used as default value of infinity for bounding box
-
     edge* init_bounding_box(const box&);
 
     void fixDelaunayCondition(point, edge*);
     void addPoint(point, int, online_point_location&, triangulationType);
 
-    static walking_point_location getDefaultLocator(int, triangulationType);
+    void init_triangulation(std::vector <point>&, triangulationType, const box& = box{0, 0, 0, 0});
     void init_triangulation(std::vector <point>&, online_point_location&, triangulationType = delaunayTriangulation, const box& = box{0, 0, 0, 0});
 public:
     int numDelaunayFlips = 0;

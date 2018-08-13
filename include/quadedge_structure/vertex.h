@@ -15,7 +15,7 @@ private:
     bool hasPosition = false;
 
     bool use(int);
-    int lastUsed = -1;
+    int lastUsed;
 public:
     vertex(){}
     vertex(int);

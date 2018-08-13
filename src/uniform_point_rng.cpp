@@ -1,7 +1,8 @@
 #include "uniform_point_rng.h"
-#include "quadedge_structure/vertex.h"
 #include <assert.h>
 #include <ctime>
+
+uniform_point_rng::uniform_point_rng(const std::tuple <T, T, T, T> &LTRB) : uniform_point_rng(std::get<0>(LTRB), std::get<1>(LTRB), std::get<2>(LTRB), std::get<3>(LTRB)) {}
 
 uniform_point_rng::uniform_point_rng(T left, T top, T right, T bottom)
 {
