@@ -42,12 +42,12 @@ plane::~plane()
     for (edge* e: this -> traverse(dualGraph, traverseNodes))
         face_list.push_back(e -> getOrigin());
 
-    for (auto elem: quadedge_list)
-        delete elem;
-    for (auto elem: vertex_list)
-        delete elem;
-    for (auto elem: face_list)
-        delete elem;
+    for (quadedge* q: quadedge_list)
+        delete q;
+    for (vertex* v: vertex_list)
+        delete v;
+    for (vertex* f: face_list) if (f != &extremeVertex)
+        delete f;
 }
 
 /* Plane Construction Helpers */
