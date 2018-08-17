@@ -247,7 +247,7 @@ std::vector <edge*> plane::traverse(graphType gm, traversalMode tm)
 
     if (tm == traverseEdges)
         return traverseEdgeDfs(startingEdge, time++);
-    else if (tm == traverseNodes)
+    else
         return traverseVertexDfs(startingEdge, time++);
 }
 
