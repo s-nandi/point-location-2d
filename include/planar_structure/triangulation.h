@@ -33,9 +33,11 @@ private:
 public:
     int numDelaunayFlips = 0;
 
+    void generateRandomTriangulation(int numPoints, triangulationType = delaunayTriangulation, const box& = box{-INF, INF, INF, -INF});
+    void generateRandomTriangulation(int numPoints, online_point_location&, triangulationType = delaunayTriangulation, const box& = box{-INF, INF, INF, -INF});
+
     void read_PT_file(std::istream &is, triangulationType = delaunayTriangulation);
-    void generateRandomTriangulation(int, triangulationType = delaunayTriangulation, const box& = box{-INF, INF, INF, -INF});
-    void generateRandomTriangulation(int, online_point_location&, triangulationType = delaunayTriangulation, const box& = box{-INF, INF, INF, -INF});
+    void write_random_delaunay_triangulation(int numPoints, std::ostream&);
 };
 
 #endif

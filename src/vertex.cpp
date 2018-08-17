@@ -38,5 +38,5 @@ bool vertex::use(int timestamp)
 std::ostream& operator << (std::ostream &os, const vertex &v)
 {
     if (v.hasPosition) return os << "[" << v.position << " : " << v.label << "]";
-    else return os << v.label; // -1 labels are ignored (non-zero label must be
+    else return os << v.label;
 }

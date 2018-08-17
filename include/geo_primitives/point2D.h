@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-typedef long double T;
+typedef double T;
 
 class point2D
 {

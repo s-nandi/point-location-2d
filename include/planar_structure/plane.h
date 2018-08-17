@@ -56,10 +56,13 @@ protected:
     edge* init_bounding_box(const box&);
     edge* init_subdivision(const std::vector <point>&, const std::vector<std::vector<int>>&);
 public:
+    ~plane();
+
     box bounds;
     std::vector <edge*> traverse(graphType, traversalMode);
 
     void read_OFF_file(std::istream&);
+    void write_OFF_file(std::ostream&);
     void interactiveTour(std::istream&, std::ostream&);
 };
 

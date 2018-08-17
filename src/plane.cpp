@@ -29,6 +29,27 @@ bool plane::flippedEndpoints(edge* e1, edge* e2)
     return e1 -> getOrigin() == e2 -> getDest() and e1 -> getDest() == e2 -> getOrigin();
 }
 
+plane::~plane()
+{
+    std::vector <quadedge*> quadedge_list;
+    std::vector <vertex*> vertex_list;
+    std::vector <vertex*> face_list;
+
+    for (edge* e: this -> traverse(primalGraph, traverseEdges))
+        quadedge_list.push_back(e -> getParent());
+    for (edge* e: this -> traverse(primalGraph, traverseNodes))
+        vertex_list.push_back(e -> getOrigin());
+    for (edge* e: this -> traverse(dualGraph, traverseNodes))
+        face_list.push_back(e -> getOrigin());
+
+    for (auto elem: quadedge_list)
+        delete elem;
+    for (auto elem: vertex_list)
+        delete elem;
+    for (auto elem: face_list)
+        delete elem;
+}
+
 /* Plane Construction Helpers */
 
 // extremeVertex is used as the outside face for any edge on the boundary of the plane
@@ -59,7 +80,7 @@ plane::box plane::calculate_LTRB_bounding_box(std::vector <point> &points)
 }
 
 // Assumes points are given in ccw order
-// Creates a polygon with a left face of Face_number and a right face correspondong to the exterior face
+// Creates a polygon with a left face of Face_number and a right face corresponding to the exterior face
 edge* plane::make_polygon(std::vector <vertex*> &vertices, int face_number)
 {
     vertex* face = new vertex(face_number);
@@ -74,6 +95,8 @@ edge* plane::make_polygon(std::vector <vertex*> &vertices, int face_number)
     {
         int inext = nextIndex(i, vertices.size());
         splice(edges[inext], edges[i] -> twin());
+        // Check that points are in ccw order
+        assert(orientation(edges[i] -> originPosition(), edges[i] -> destinationPosition(), edges[inext] -> destinationPosition()) <= 0);
     }
     return edges[0];
 }
@@ -110,7 +133,6 @@ edge* plane::init_subdivision(const std::vector <point> &points, const std::vect
     {
         vertices[i] = new vertex(points[i], i);
     }
-
     std::vector <edge*> edges;
     for (int i = 0; i < faces.size(); i++)
     {
@@ -229,7 +251,7 @@ std::vector <edge*> plane::traverse(graphType gm, traversalMode tm)
         return traverseVertexDfs(startingEdge, time++);
 }
 
-/* Parsing */
+/* File Input/Output */
 
 void plane::read_OFF_file(std::istream &is)
 {
@@ -237,6 +259,44 @@ void plane::read_OFF_file(std::istream &is)
     std::vector <std::vector<int>> faces;
     std::tie(points, faces) = parse_OFF_file(is);
     init_subdivision(points, faces);
+}
+
+void plane::write_OFF_file(std::ostream &os)
+{
+    auto primal_edges = traverse(primalGraph, traverseNodes);
+    auto dual_edges = traverse(dualGraph, traverseNodes);
+    int numPoints = primal_edges.size();
+    int numEdges = traverse(primalGraph, traverseEdges).size();
+    int numFaces = (int) dual_edges.size() - 1;
+    std::vector <point> points(numPoints);
+    std::vector <std::vector<int>> faces(numFaces + 1);
+    for (edge* e: primal_edges)
+    {
+        vertex* o = e -> getOrigin();
+        points[o -> getLabel()] = o -> getPosition();
+    }
+    for (edge* e: dual_edges)
+    {
+        int index = e -> getOrigin() -> getLabel();
+        if (index == 0) continue;
+        assert(index <= numFaces and index >= 0);
+        for (auto it = e -> rot() -> begin(incidentOnFace); it != e -> rot() -> end(incidentOnFace); ++it)
+        {
+            faces[index].push_back(it -> getOrigin() -> getLabel());
+        }
+    }
+
+    os << "OFF" << '\n';
+    os << numPoints << " " << numFaces << " " << numEdges << '\n';
+    for (int i = 0; i < numPoints; i++)
+        os << points[i].x << " " << points[i].y << '\n';
+    for (int i = 1; i <= numFaces; i++)
+    {
+        os << faces[i].size();
+        for (int pointIndex: faces[i])
+            os << " " << pointIndex;
+        os << '\n';
+    }
 }
 
 /* Plane Output */

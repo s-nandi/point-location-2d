@@ -1,6 +1,9 @@
 #ifndef TESTING_H_DEFINED
 #define TESTING_H_DEFINED
 
+#include <chrono>
+#include <iostream>
+
 /* Helper Functions for Timing */
 
 using clock_type = std::chrono::high_resolution_clock;

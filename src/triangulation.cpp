@@ -92,6 +92,7 @@ void triangulation::addPoint(point p, int index, online_point_location &locator,
         new_edge = connect(enclosing_edges[i], new_edge -> twin(), -1);
         locator.addEdge(new_edge);
     }
+
     if (type == delaunayTriangulation)
     {
         // Need to flip the enclosing edges if they violate the delaunay condition
@@ -144,11 +145,16 @@ void triangulation::init_triangulation(std::vector <point> &points, online_point
     if (type == delaunayTriangulation)
         std::random_shuffle(points.begin(), points.end());
 
+    double checkpoint = 0.0;
     for (int i = 0; i < points.size(); i++)
     {
+        if ((double) i / points.size() > checkpoint)
+        {
+            std::cout<<"Added: " << checkpoint * 100 << "% of points" << std::endl;
+            checkpoint += .1;
+        }
         addPoint(points[i], 4 + i, locator, type);
     }
-
     // Label each left face of the triangulation
     int faceNumber = 1;
     for (edge* e: this -> traverse(dualGraph, traverseNodes))
@@ -180,4 +186,10 @@ void triangulation::read_PT_file(std::istream &is, triangulationType type)
 {
     std::vector <point> points = parse_PT_file(is);
     init_triangulation(points, type);
+}
+
+void triangulation::write_random_delaunay_triangulation(int numPoints, std::ostream &os)
+{
+    generateRandomTriangulation(numPoints, delaunayTriangulation);
+    write_OFF_file(os);
 }

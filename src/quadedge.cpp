@@ -15,6 +15,15 @@ quadedge::quadedge()
     e[3] -> setNext(e[1]);
 }
 
+quadedge::~quadedge()
+{
+    for (int i = 0; i < 4; i++)
+    {
+        if (e[i] != NULL)
+            delete e[i];
+    }
+}
+
 // Returns false if edge was used during or after given timestamp
 // Otherwise returns true and sets lastUsed to timestamp
 // Used to ensure that each edge is only used once in traversal
@@ -86,16 +95,6 @@ edge* edge::fprev() const
     return invrot() -> oprev() -> rot();
 }
 
-/* Edge assignment */
-
-void edge::setTwin(edge* &e)
-{
-    int ind = shift_up_mod4(type, 2);
-    par -> setEdge(ind, e);
-    e -> type = ind;
-    e -> par = par;
-}
-
 /* Endpoint getter/setter */
 
 vertex* edge::getOrigin() const
@@ -146,6 +145,18 @@ int edge::leftfaceLabel() const
 int edge::rightfaceLabel() const
 {
     return rightface().getLabel();
+}
+
+/* Edge/Vertex Reassignment */
+
+void edge::setTwin(edge* &e)
+{
+    e -> getParent() -> setEdge(e -> type, NULL);
+    int ind = shift_up_mod4(type, 2);
+    // Set e to be the twin edge of this and correct e's parent and type values
+    par -> setEdge(ind, e);
+    e -> type = ind;
+    e -> par = par;
 }
 
 // Sets origin/destination to o and d respectively
@@ -232,7 +243,7 @@ void deleteEdge(edge* e)
     }
     splice(e, e -> oprev());
     splice(e -> twin(), e -> twin() -> oprev());
-
+    delete e -> getParent();
 }
 
 // Assumes a and b represent twins
@@ -254,10 +265,13 @@ edge* mergeTwins(edge* a, edge* b)
     a -> rot() -> oprev() -> setNext(b_rot_onext);
     b -> rot() -> oprev() -> setNext(a_rot_onext);
 
+    quadedge* old_parent = b -> getParent();
+
     edge* b_invrot = b -> invrot();
     a -> setTwin(b);
     a -> invrot() -> setTwin(b_invrot);
 
+    delete old_parent;
     return a;
 }
 

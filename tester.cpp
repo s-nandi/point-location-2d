@@ -1,6 +1,6 @@
 #include <iostream>
+#include <fstream>
 #include <assert.h>
-#include <chrono>
 #include <cmath>
 #include <algorithm>
 #include "planar_structure/triangulation.h"
@@ -63,7 +63,7 @@ void test_random_point_location_in_random_triangulation(point_location &locator,
     triangulation tr;
     int numCorrect = 0;
 
-    int left = -1000000, top = 10000000, right = 500000, bottom = -10000000;
+    int left = -10000000, top = 10000000, right = 10000000, bottom = -10000000;
     std::tuple <T, T, T, T> bounding_box{left, top, right, bottom};
     double padding_coeff = 1.3; // So that some points are outside bounding box;
 
@@ -137,7 +137,7 @@ void test_random_point_location_in_random_triangulation(point_location &locator,
 void test_delaunay_condition_for_random_triangulation(int numPoints = 100000)
 {
     int numCorrect = 0, total = 0;
-    triangulation tr = triangulation();
+    triangulation tr;
     startTimer();
     tr.generateRandomTriangulation(numPoints, delaunayTriangulation);
     endTimer();
@@ -150,6 +150,36 @@ void test_delaunay_condition_for_random_triangulation(int numPoints = 100000)
             numCorrect++;
     }
     print_percent_correct("test_delaunay_condition_for_random_triangulation", numCorrect, total);
+}
+
+void write_delaunay_triangulation(int numPoints, const std::string &file_name)
+{
+    std::ofstream writer(file_name);
+    triangulation tr;
+    tr.write_random_delaunay_triangulation(numPoints, writer);
+    writer.close();
+}
+
+void test_saving_delaunay_triangulation(int numPoints)
+{
+    int numCorrect = 0, total = 0;
+
+    write_delaunay_triangulation(numPoints, "temp.txt");
+
+    std::ifstream reader("temp.txt");
+    assert(reader.is_open());
+    triangulation tr;
+    tr.read_OFF_file(reader);
+    reader.close();
+    for (edge* e: tr.traverse(primalGraph, traverseEdges))
+    {
+        total++;
+        if (fulfills_delaunay(e))
+            numCorrect++;
+    }
+    int np = tr.traverse(primalGraph, traverseNodes).size();
+    assert(np == 4 + numPoints);
+    print_percent_correct("test_saving_delaunay_triangulation", numCorrect, total);
 }
 
 void test_rng_distribution()
@@ -239,9 +269,12 @@ int main()
     test_rng_distribution();
     print_time("test_rng_distribution");
 
+    /* Delaunay Storage Testing */
+    test_saving_delaunay_triangulation(1000);
+
     /* Point Location Testing */
 
-    int numPoints = 10000;
+    int numPoints = 100000;
 
     /* Naive Quadtree */
     naive_quadtree quad_locator(90, 60);
@@ -249,8 +282,10 @@ int main()
     test_random_point_location_in_random_triangulation(quad_locator, numPoints, true);
     print_time("test_random_point_location_in_random_delaunay_triangulation quad");
 
+    /*
     test_random_point_location_in_random_triangulation(quad_locator, numPoints, false);
     print_time("test_random_point_location_in_random_arbitrary_triangulation quad");
+    */
 
     /* Slab decomposition */
 
@@ -259,8 +294,10 @@ int main()
     test_random_point_location_in_random_triangulation(slab_locator, numPoints, true);
     print_time("test_random_point_location_in_random_delaunay_triangulation slab");
 
+    /*
     test_random_point_location_in_random_triangulation(slab_locator, numPoints, false);
     print_time("test_random_point_location_in_random_arbitrary_triangulation slab");
+    */
 
     /* Oriented Walk */
 
@@ -271,8 +308,10 @@ int main()
     test_random_point_location_in_random_triangulation(walk_locator, numPoints, true);
     print_time("test_random_point_location_in_random_delaunay_triangulation walking");
 
+    /*
     test_random_point_location_in_random_triangulation(walk_locator, numPoints, false);
     print_time("test_random_point_location_in_random_arbitrary_triangulation walking");
+    */
 
     /* Delaunay Speed Testing */
 
