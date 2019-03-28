@@ -9,6 +9,7 @@ class plane;
 class point_location
 {
 public:
+    virtual ~point_location() = default;
     virtual void init(plane&) = 0;
     virtual edge* locate(point) = 0;
 };
@@ -16,6 +17,7 @@ public:
 class walking_scheme
 {
 public:
+    virtual ~walking_scheme() = default;
     virtual edge* locate(edge*, point) = 0;
 };
 
