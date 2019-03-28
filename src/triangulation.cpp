@@ -6,7 +6,7 @@
 #include "point_location/walking/walking_point_location.h"
 #include "uniform_point_rng.h"
 #include "parsing.h"
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <algorithm>
 #include <memory>
@@ -96,9 +96,9 @@ void triangulation::addPoint(point p, int index, online_point_location &locator,
     if (type == delaunayTriangulation)
     {
         // Need to flip the enclosing edges if they violate the delaunay condition
-        for (int i = 0; i < enclosing_edges.size(); i++)
+        for (auto& enclosing_edge: enclosing_edges)
         {
-            fixDelaunayCondition(p, enclosing_edges[i]);
+            fixDelaunayCondition(p, enclosing_edge);
         }
     }
 }
@@ -122,13 +122,12 @@ void triangulation::init_triangulation(std::vector <point> &points, triangulatio
             break;
     }
     std::unique_ptr <walking_scheme> locator_ptr = std::make_unique<lawson_oriented_walk>(lawson_oriented_walk(walkOptions, fastWalk));
-    std::unique_ptr <starting_edge_selector> selector_ptr = std::make_unique<starting_edge_selector>(starting_edge_selector({selectSample}, std::pow(numPoints, 1.0 / 3.0)));
+    std::unique_ptr <starting_edge_selector> selector_ptr = std::make_unique<starting_edge_selector>(starting_edge_selector(selectSample, std::pow(numPoints, 1.0 / 3.0)));
     walking_point_location locator(locator_ptr, selector_ptr);
     init_triangulation(points, locator, type, LTRB);
 }
 
-void triangulation::init_triangulation(std::vector <point> &points, online_point_location &locator, triangulationType type, const box &LTRB)
-{
+void triangulation::init_triangulation(std::vector <point> &points, online_point_location &locator, triangulationType type, const box &LTRB) {
     // Create bounding box, calculate dimensions if not given
     int left, top, right, bottom;
     if (LTRB == box{0, 0, 0, 0})
@@ -143,7 +142,10 @@ void triangulation::init_triangulation(std::vector <point> &points, online_point
 
     // Randomly order the points for delaunay triangulations to achieve average case behavior
     if (type == delaunayTriangulation)
-        std::random_shuffle(points.begin(), points.end());
+    {
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        std::shuffle(points.begin(), points.end(), std::mt19937(seed));
+    }
 
     double checkpoint = 0.0;
     for (int i = 0; i < points.size(); i++)
@@ -162,7 +164,7 @@ void triangulation::init_triangulation(std::vector <point> &points, online_point
         // Skip labeling the exterior face (already labeled as the extreme vertex)
         if (e -> getOrigin() -> getLabel() == 0) continue;
 
-        vertex* face = new vertex(faceNumber);
+        auto face = new vertex(faceNumber);
         e -> rot() -> labelFace(face);
         faceNumber++;
     }
