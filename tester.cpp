@@ -1,8 +1,9 @@
 #include <iostream>
 #include <fstream>
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <algorithm>
+#include <memory>
 #include "planar_structure/triangulation.h"
 #include "point_location/walking/lawson_oriented_walk.h"
 #include "point_location/walking/walking_point_location.h"
@@ -98,7 +99,7 @@ void test_random_point_location_in_random_triangulation(point_location &locator,
         if (i != faces[i])
             failure = true;
     }
-    assert(faces.size() > 0);
+    assert(!faces.empty());
     assert(!failure);
 
     uniform_point_rng rng(padding_coeff * left, padding_coeff * top, padding_coeff * right, padding_coeff * bottom);
@@ -109,7 +110,7 @@ void test_random_point_location_in_random_triangulation(point_location &locator,
     {
         edge* e = locator.locate(p);
         bool expected_in_box = in_padded_bounding_box(p, left, top, right, bottom);
-        bool found_in_box = !(e == NULL);
+        bool found_in_box = (e != nullptr);
         if (expected_in_box != found_in_box)
         {
             std::cout << "Incorrect: " << p << " in plane was supposed to be " << expected_in_box << " but you found " << found_in_box << std::endl;
