@@ -10,6 +10,7 @@
 #include <cmath>
 #include <algorithm>
 #include <memory>
+#include <chrono>
 
 edge* triangulation::init_bounding_box(const box &LTRB)
 {
